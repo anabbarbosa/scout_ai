@@ -1,0 +1,22 @@
+# Runtime dependencies — requires Python 3.14+
+
+# Scraping
+httpx>=0.28.1
+selectolax>=0.3.29
+playwright>=1.55.0  # only for JS-heavy pages; run `playwright install chromium` after installing
+
+# Storage
+sqlalchemy>=2.0.44
+alembic>=1.17.0
+psycopg[binary]>=3.2.10  # PostgreSQL driver; SQLite needs no extra package
+
+# Config and validation
+pydantic>=2.12.0
+pydantic-settings>=2.11.0
+
+# LLM
+anthropic>=0.69.0
+
+# API / UI (later) — uncomment when needed
+# fastapi>=0.118.0
+# uvicorn[standard]>=0.37.0
