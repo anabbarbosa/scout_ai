@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///scout_ai.db"
 
-    anthropic_api_key: SecretStr | None = None
+    claude_code_oauth_token: SecretStr | None = None
 
     hubspot_token: SecretStr | None = None
 

@@ -17,7 +17,7 @@ The repository is empty, so these are defaults, not decisions. Change them befor
 | Scraping | `httpx` + `selectolax`; `playwright` only for JS-heavy pages | Light by default, browser only when needed |
 | Storage | PostgreSQL (SQLite for local dev) | Relational data, easy to connect to Power BI |
 | ORM / migrations | SQLAlchemy + Alembic | Standard, well-documented |
-| LLM | Claude API (Anthropic Python SDK) | Summaries: `claude-sonnet-5-5`; recommendations: `claude-opus-5-5` |
+| LLM | Claude Agent SDK, authenticated with the Claude subscription (no API key) | Summaries: `claude-sonnet-5-5`; recommendations: `claude-opus-5-5` |
 | Scheduling | Cron / GitHub Actions to start; a job queue later if needed | Keep the MVP simple |
 | API / UI (later) | FastAPI | Only if a UI is required beyond reports and ClickUp tasks |
 | Tests / quality | `pytest`, `ruff`, `mypy` | |
@@ -63,7 +63,7 @@ The repository is empty, so these are defaults, not decisions. Change them befor
 3. Add `.env.example` with every variable the app needs (no real values):
    ```
    DATABASE_URL=
-   ANTHROPIC_API_KEY=
+   CLAUDE_CODE_OAUTH_TOKEN=   # only for unattended runs; locally use `claude login`
    HUBSPOT_TOKEN=
    CLICKUP_TOKEN=
    CLICKUP_LIST_ID=

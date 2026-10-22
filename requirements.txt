@@ -14,8 +14,8 @@ psycopg[binary]>=3.2.10  # PostgreSQL driver; SQLite needs no extra package
 pydantic>=2.12.0
 pydantic-settings>=2.11.0
 
-# LLM
-anthropic>=0.69.0
+# LLM — Claude Agent SDK, authenticated with the Claude subscription (see src/scout_ai/llm.py)
+claude-agent-sdk>=0.2.172
 
 # API / UI (later) — uncomment when needed
 # fastapi>=0.118.0
