@@ -1,4 +1,4 @@
-"""Command-line entry points: db-setup, collect, sync, analyze, report."""
+"""Command-line entry points: db-setup, collect, fetch, load, analyze, report."""
 
 import argparse
 import sys
@@ -22,9 +22,15 @@ def collect() -> int:
     return 1
 
 
-def sync() -> int:
-    """Pull internal data from HubSpot and ClickUp (guide Step 5)."""
-    print("sync: not implemented yet")
+def fetch() -> int:
+    """Read HubSpot and the Marketing CSVs, write the synthetic demo dataset (guide Step 5)."""
+    print("fetch: not implemented yet")
+    return 1
+
+
+def load() -> int:
+    """Load the synthetic demo dataset from data/demo/ into the database (guide Step 5)."""
+    print("load: not implemented yet")
     return 1
 
 
@@ -43,7 +49,8 @@ def report() -> int:
 COMMANDS: dict[str, Callable[[], int]] = {
     "db-setup": db_setup,
     "collect": collect,
-    "sync": sync,
+    "fetch": fetch,
+    "load": load,
     "analyze": analyze,
     "report": report,
 }
