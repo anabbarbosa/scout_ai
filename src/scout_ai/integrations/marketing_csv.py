@@ -24,15 +24,6 @@ MQL_PATTERN = "*MQL Count*.csv"
 
 NO_VALUE = "(No value)"
 
-_REGIONS = {
-    "north america": Region.NORTH_AMERICA,
-    "na": Region.NORTH_AMERICA,
-    "brazil": Region.BRAZIL,
-    "latam": Region.LATAM,
-    "emea": Region.EMEA,
-    "apac": Region.APAC,
-}
-
 
 class MarketingCSVError(ValueError):
     pass
@@ -51,11 +42,6 @@ class MqlRow:
     region: Region
     channel: str  # HubSpot "Original Source", e.g. "Paid Search"
     campaign: str  # "Original Source Drill-Down 1"; "" when HubSpot has no value
-
-
-def to_region(raw: str) -> Region:
-    """Map the region spellings used by both exports; unknown values become OTHER."""
-    return _REGIONS.get(raw.strip().lower(), Region.OTHER)
 
 
 def find_export(raw_dir: Path, pattern: str) -> Path:
@@ -97,7 +83,7 @@ def read_spend(path: Path) -> list[SpendRow]:
             if label == "Total":
                 period = None  # block finished; wait for the next month title
             else:
-                rows.append(SpendRow(period, to_region(label), _money(cells[spend_col])))
+                rows.append(SpendRow(period, Region.from_label(label), _money(cells[spend_col])))
     if not rows:
         raise MarketingCSVError(f"No monthly spend blocks found in {path.name}.")
     return rows
@@ -129,7 +115,7 @@ def read_mqls(path: Path) -> list[MqlRow]:
         mqls.append(
             MqlRow(
                 mql_date=date.fromisoformat(cells[date_col].strip()),
-                region=to_region(cells[region_col]),
+                region=Region.from_label(cells[region_col]),
                 channel=cells[channel_col].strip(),
                 campaign="" if campaign == NO_VALUE else campaign,
             )
