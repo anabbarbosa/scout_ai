@@ -1,1 +1,1 @@
-"""Internal data integrations: HubSpot, ClickUp, Power BI (guide Step 5)."""
+"""Internal data integrations: HubSpot, ClickUp (guide Step 5)."""
