@@ -45,3 +45,7 @@ desktop.ini
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Data: only the synthetic demo dataset is committed (guide Step 5)
+data/*
+!data/demo/
