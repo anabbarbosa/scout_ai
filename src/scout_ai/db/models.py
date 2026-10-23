@@ -68,6 +68,17 @@ class DealOutcome(StrEnum):
     LOST = "lost"
 
 
+class Region(StrEnum):
+    """Sales regions, as used by HubSpot and the Marketing spend exports."""
+
+    NORTH_AMERICA = "north_america"
+    BRAZIL = "brazil"
+    LATAM = "latam"
+    EMEA = "emea"
+    APAC = "apac"
+    OTHER = "other"
+
+
 class RecommendationStatus(StrEnum):
     PROPOSED = "proposed"
     APPROVED = "approved"
@@ -179,11 +190,12 @@ class FunnelMetric(Base):
     """Aggregated internal funnel data; no personal contact data is stored here."""
 
     __tablename__ = "funnel_metrics"
-    # One row per period/channel/campaign keeps the HubSpot sync idempotent.
-    __table_args__ = (UniqueConstraint("period", "channel", "campaign"),)
+    # One row per period/region/channel/campaign keeps `scout load` idempotent.
+    __table_args__ = (UniqueConstraint("period", "region", "channel", "campaign"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     period: Mapped[date] = mapped_column(Date)  # first day of the month
+    region: Mapped[Region] = mapped_column(_enum(Region))  # joins with marketing_spend
     channel: Mapped[str] = mapped_column(String(100))
     campaign: Mapped[str] = mapped_column(String(200), default="", server_default="")
     leads: Mapped[int] = mapped_column(default=0, server_default="0")
@@ -209,6 +221,30 @@ class DealCompetition(Base):
     closed_at: Mapped[date | None] = mapped_column(Date)
 
     competitor: Mapped[Competitor] = relationship(back_populates="deals")
+
+
+class Campaign(Base):
+    """A marketing campaign seen in HubSpot: the closest thing to an "initiative" (Step 7)."""
+
+    __tablename__ = "campaigns"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), unique=True)  # same value as funnel_metrics
+    channel: Mapped[str] = mapped_column(String(100))
+    first_mql_at: Mapped[date | None] = mapped_column(Date)  # period the campaign was active
+    last_mql_at: Mapped[date | None] = mapped_column(Date)
+
+
+class MarketingSpend(Base):
+    """Monthly Marketing spend per region, from the Marketing cost exports (Step 5)."""
+
+    __tablename__ = "marketing_spend"
+    __table_args__ = (UniqueConstraint("period", "region"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    period: Mapped[date] = mapped_column(Date)  # first day of the month
+    region: Mapped[Region] = mapped_column(_enum(Region))
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
 
 
 def priority_score(*, impact: int, cost: int, effort: int, confidence: int) -> float:

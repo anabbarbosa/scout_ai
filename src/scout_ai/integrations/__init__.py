@@ -1,1 +1,1 @@
-"""Internal data integrations: HubSpot, ClickUp (guide Step 5)."""
+"""Internal data integrations: HubSpot and Marketing CSV exports (guide Step 5)."""
