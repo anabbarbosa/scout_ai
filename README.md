@@ -10,14 +10,14 @@ Vision, scope, monitored competitors and roadmap. For step-by-step development i
 
 The differentiator is **not scraping competitors**. It is cross-referencing market intelligence with Confience's internal data to turn information into decisions.
 
-The platform is an **intelligence layer on top of the tools we already use** (HubSpot, ClickUp). It does not replace the CRM and is not another generic dashboard.
+The platform is an **intelligence layer on top of the tools we already use** (HubSpot, Marketing's cost exports, and ClickUp for the actions it recommends). It does not replace the CRM and is not another generic dashboard.
 
 Three modules connected in a single flow:
 
 | Module | Question it answers | Inputs |
 |---|---|---|
 | **Market monitoring** | What are competitors doing? | Websites, blogs, events, webinars, press releases, LinkedIn, comparison pages, reviews (G2/Capterra) |
-| **Internal data integration** | What does our data reveal about performance and sales? | HubSpot (leads, deals, attribution, revenue), ClickUp (initiatives and effort) |
+| **Internal data integration** | What does our data reveal about performance and sales? | HubSpot (leads, deals, attribution, revenue, campaigns), Marketing cost exports (spend per region) |
 | **AI recommendations** | What should we test or change next? | Output of the two modules above |
 
 ### Hypothesis to validate
@@ -120,11 +120,13 @@ Suggested priority: `impact × confidence ÷ (cost + effort)`. Approved recommen
 
 | Phase | Deliverable | Success criterion |
 |---|---|---|
-| **0 — Discovery** | Map available data in HubSpot/ClickUp; confirm competitors from deals | Competitor list validated by data; API access in place |
+| **0 — Discovery** | Map available data in HubSpot and the Marketing cost exports; confirm competitors from deals | Competitor list validated by data; API access in place |
 | **1 — Monitoring** | Periodic collection of signals for the top 3 competitors + weekly summary | Marketing team reads and uses the summary |
-| **2 — Integration** | Connect HubSpot: leads → opportunities → deals by channel and campaign | Reliable view of which channels generate deals, not just leads |
+| **2 — Integration** | Connect HubSpot and Marketing spend: leads → opportunities → deals and cost by region, channel and campaign | Reliable view of which channels generate deals, not just leads |
 | **3 — Recommendations** | AI cross-references external and internal signals and produces scored actions | At least one recommendation executed and measured per month |
 | **4 — Closed loop** | Recommendations → ClickUp → results measured in HubSpot | Measure the pipeline impact of suggested actions |
+
+> **Demo data.** The first version is a demo presented to a wide audience, so internal data is **synthetic**: generated from the patterns of the real HubSpot data and Marketing spend, with no real company, person, campaign or amount. ClickUp tasks are shown as a dry run. See [guide.md](guide.md) Step 5.
 
 ---
 

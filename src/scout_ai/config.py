@@ -16,7 +16,11 @@ class Settings(BaseSettings):
 
     hubspot_token: SecretStr | None = None
 
-    clickup_token: SecretStr | None = None
+    # Synthetic demo dataset (guide Step 5): same seed + same input = same files
+    demo_seed: int = 42
+    demo_data_dir: str = "data/demo"
+    # Marketing CSV exports read by `scout fetch`; they hold personal data, never commit them
+    raw_data_dir: str = "data/raw"
 
 
 @lru_cache
