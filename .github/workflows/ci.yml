@@ -8,6 +8,22 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: scout
+          POSTGRES_PASSWORD: scout
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scout -d postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      # tests/test_db.py creates, migrates and seeds this database on the service above
+      SCOUT_TEST_POSTGRES_URL: postgresql+psycopg://scout:scout@localhost:5432/scout_ai_test
     steps:
       - uses: actions/checkout@v5
 
