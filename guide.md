@@ -15,11 +15,11 @@ The repository is empty, so these are defaults, not decisions. Change them befor
 | Language | Python 3.14 | Best ecosystem for scraping, data and LLM work |
 | Dependency management | `uv` | Fast, single lockfile |
 | Scraping | `httpx` + `selectolax`; `playwright` only for JS-heavy pages | Light by default, browser only when needed |
-| Storage | PostgreSQL (SQLite for local dev) | Relational data, easy to connect to Power BI |
+| Storage | PostgreSQL (SQLite for local dev) | Relational data, served to the web dashboard through the API |
 | ORM / migrations | SQLAlchemy + Alembic | Standard, well-documented |
 | LLM | Claude Agent SDK, authenticated with the Claude subscription (no API key) | Summaries: `claude-sonnet-5-5`; recommendations: `claude-opus-5-5` |
 | Scheduling | Cron / GitHub Actions to start; a job queue later if needed | Keep the MVP simple |
-| API / UI (later) | FastAPI | Only if a UI is required beyond reports and ClickUp tasks |
+| Dashboard | FastAPI (API) + JavaScript web front end | Read-only view over the Postgres tables; see Step 10 |
 | Tests / quality | `pytest`, `ruff`, `mypy` | |
 
 ---
@@ -29,7 +29,6 @@ The repository is empty, so these are defaults, not decisions. Change them befor
 1. **Confirm data access.**
    - HubSpot: create a **Private App** with read scopes for contacts, companies, deals and marketing campaigns.
    - ClickUp: generate an API token and pick the Space/List where recommendations will become tasks.
-   - Power BI: confirm whether we can query datasets through the REST API (requires an Entra ID app / service principal and workspace access). If not, use HubSpot as the source of truth for funnel data in the MVP.
 2. **Audit HubSpot data quality.**
    - Are `original source`, campaign and lifecycle stage filled in consistently?
    - Is there a **competitor** property on deals? If not, create it (dropdown: LabVantage, LabWare, Clinisys, STARLIMS, CloudLIMS, Other, None) and ask Sales to fill it from now on.
@@ -54,7 +53,7 @@ The repository is empty, so these are defaults, not decisions. Change them befor
      config.py          # settings loaded from environment
      db/                # models and session
      collectors/        # one module per external source
-     integrations/      # hubspot.py, clickup.py, powerbi.py
+     integrations/      # hubspot.py, clickup.py
      analysis/          # LLM summarization and recommendations
      reports/           # weekly summary rendering
      cli.py             # entry points: collect, sync, analyze, report
@@ -67,9 +66,6 @@ The repository is empty, so these are defaults, not decisions. Change them befor
    HUBSPOT_TOKEN=
    CLICKUP_TOKEN=
    CLICKUP_LIST_ID=
-   POWERBI_TENANT_ID=
-   POWERBI_CLIENT_ID=
-   POWERBI_CLIENT_SECRET=
    ```
 4. Configure `ruff`, `mypy` and `pytest` in `pyproject.toml`, and add a CI workflow that runs them.
 
@@ -92,6 +88,15 @@ Create these tables with Alembic migrations:
 | `recommendations` | AI output | action, evidence (JSON with links), impact, cost, effort, confidence, priority, status, clickup_task_id |
 
 **Done when:** migrations run on a clean database and a seed script inserts the five competitors with their sources.
+
+How to run it locally (models in `src/scout_ai/db/models.py`, migrations in `src/scout_ai/db/migrations/`):
+
+```bash
+docker compose -f docker/compose.yml up -d --build   # PostgreSQL 18 on localhost:5434
+# DATABASE_URL=postgresql+psycopg://scout:scout@localhost:5434/scout_ai  (see .env.example)
+scout db-setup                                        # create database, migrate, seed (idempotent)
+alembic revision --autogenerate -m "describe change"  # after changing a model
+```
 
 ---
 
@@ -128,10 +133,10 @@ Create these tables with Alembic migrations:
    - Pull deals (stage, amount, close date, source, campaign, competitor property) and contacts' lifecycle stages through the CRM v3 API.
    - Aggregate into `funnel_metrics` per channel, campaign and month.
    - Fill `deals_competition` from the competitor property.
-2. **Power BI** (`integrations/powerbi.py`, optional in MVP): query revenue figures with the `executeQueries` endpoint to reconcile with HubSpot.
-3. **ClickUp** (`integrations/clickup.py`): read existing marketing tasks to estimate effort and see which initiatives already ran.
-4. Make every sync **incremental** (only records changed since the last run) and idempotent.
-5. Add CLI command: `uv run scout sync`.
+   - HubSpot is the source of truth for revenue too (amounts of closed-won deals); there is no separate BI source.
+2. **ClickUp** (`integrations/clickup.py`): read existing marketing tasks to estimate effort and see which initiatives already ran.
+3. Make every sync **incremental** (only records changed since the last run) and idempotent.
+4. Add CLI command: `uv run scout sync`.
 
 **Done when:** the numbers in `funnel_metrics` for last quarter match HubSpot's own reports within an agreed tolerance.
 
@@ -180,7 +185,24 @@ Create these tables with Alembic migrations:
 - **Costs:** track LLM token usage per job; cache unchanged inputs.
 - **Security:** keep tokens in a secrets manager, never in the repo; give integrations read-only scopes except ClickUp task creation.
 - **Privacy:** store only aggregated funnel data where possible; avoid copying personal contact data out of HubSpot.
-- **Dashboard (optional):** expose the tables to Power BI instead of building a custom UI.
+- **Dashboard:** protect the web dashboard (Step 10) with company login; never expose the database directly.
+
+---
+
+## Step 10 — Web dashboard
+
+The dashboard is our own web app, not a BI tool. It shows what the weekly summary shows, with filters and history, and lets Marketing act on recommendations. It does not try to replace HubSpot's own reports (README §4 and §7).
+
+1. **API** (`src/scout_ai/api/`, FastAPI): read-only endpoints over the existing tables, e.g. `GET /competitors`, `GET /signals?competitor=&type=&since=`, `GET /funnel?from=&to=&channel=`, `GET /deals/competition`, `GET /recommendations?status=`. The only write is `PATCH /recommendations/{id}` to approve or reject one, which triggers the ClickUp task from Step 8.
+2. **Front end** (`web/`): a JavaScript single-page app consuming the API. Views:
+   - Signals feed per competitor (new this week, by type, with links to the source)
+   - Funnel by channel and campaign: leads → opportunities → deals won, versus the previous period
+   - Win/loss against each competitor
+   - Recommendations ranked by priority, with evidence links and approve/reject buttons
+3. **Auth:** company single sign-on (Microsoft Entra ID) in front of both the API and the front end. The API connects to Postgres with a read-mostly database role.
+4. **Deploy:** the API and front end as containers next to the Postgres from `docker/`; add them to `docker/compose.yml` for local development.
+
+**Done when:** Marketing uses the dashboard instead of the emailed summary for at least one weekly review, and approving a recommendation there creates its ClickUp task.
 
 ---
 
@@ -190,4 +212,5 @@ Create these tables with Alembic migrations:
 - [ ] HubSpot funnel data synced and reconciled
 - [ ] Weekly summary delivered and used by Marketing
 - [ ] Recommendations with evidence and scores, turned into ClickUp tasks
+- [ ] Web dashboard (FastAPI + JavaScript) live for Marketing
 - [ ] At least one recommendation executed and its impact measured
