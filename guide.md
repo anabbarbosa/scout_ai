@@ -65,7 +65,6 @@ The repository is empty, so these are defaults, not decisions. Change them befor
    CLAUDE_CODE_OAUTH_TOKEN=   # only for unattended runs; locally use `claude login`
    HUBSPOT_TOKEN=
    CLICKUP_TOKEN=
-   CLICKUP_LIST_ID=
    ```
 4. Configure `ruff`, `mypy` and `pytest` in `pyproject.toml`, and add a CI workflow that runs them.
 
