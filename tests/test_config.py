@@ -3,10 +3,10 @@ import pytest
 from scout_ai.config import Settings
 
 
-def test_defaults_to_local_sqlite(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_defaults_to_local_postgres(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("DATABASE_URL", raising=False)
     settings = Settings(_env_file=None)
-    assert settings.database_url == "sqlite:///scout_ai.db"
+    assert settings.database_url == "postgresql+psycopg://scout:scout@localhost:5434/scout_ai"
     assert settings.hubspot_token is None
 
 
