@@ -78,6 +78,21 @@ class Region(StrEnum):
     APAC = "apac"
     OTHER = "other"
 
+    @classmethod
+    def from_label(cls, raw: str) -> Region:
+        """Map HubSpot's and the spend report's spellings ("NA", "North America", "BRAZIL")."""
+        return _REGION_LABELS.get(raw.strip().lower(), cls.OTHER)
+
+
+_REGION_LABELS = {
+    "north america": Region.NORTH_AMERICA,
+    "na": Region.NORTH_AMERICA,
+    "brazil": Region.BRAZIL,
+    "latam": Region.LATAM,
+    "emea": Region.EMEA,
+    "apac": Region.APAC,
+}
+
 
 class RecommendationStatus(StrEnum):
     PROPOSED = "proposed"

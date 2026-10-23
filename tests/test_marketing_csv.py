@@ -11,7 +11,6 @@ from scout_ai.integrations.marketing_csv import (
     find_export,
     read_mqls,
     read_spend,
-    to_region,
 )
 
 # Made-up values in the layout of the real exports (which hold personal data and stay in
@@ -100,8 +99,8 @@ def test_read_mqls_rejects_unexpected_columns(tmp_path: Path) -> None:
         ("ROW", Region.OTHER),
     ],
 )
-def test_to_region(raw: str, region: Region) -> None:
-    assert to_region(raw) is region
+def test_region_from_label(raw: str, region: Region) -> None:
+    assert Region.from_label(raw) is region
 
 
 def test_find_export_needs_exactly_one_match(tmp_path: Path) -> None:
