@@ -17,7 +17,6 @@ class Settings(BaseSettings):
     hubspot_token: SecretStr | None = None
 
     clickup_token: SecretStr | None = None
-    clickup_list_id: str | None = None
 
 
 @lru_cache
