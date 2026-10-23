@@ -1,10 +1,19 @@
-"""Command-line entry points: collect, sync, analyze, report."""
+"""Command-line entry points: db-setup, collect, sync, analyze, report."""
 
 import argparse
 import sys
 from collections.abc import Callable, Sequence
 
 from scout_ai import __version__
+
+
+def db_setup() -> int:
+    """Create the database if missing, apply migrations and seed competitors (guide Step 2)."""
+    from scout_ai.config import get_settings
+    from scout_ai.db.setup import setup_database
+
+    setup_database(get_settings().database_url)
+    return 0
 
 
 def collect() -> int:
@@ -14,7 +23,7 @@ def collect() -> int:
 
 
 def sync() -> int:
-    """Pull internal data from HubSpot, Power BI and ClickUp (guide Step 5)."""
+    """Pull internal data from HubSpot and ClickUp (guide Step 5)."""
     print("sync: not implemented yet")
     return 1
 
@@ -32,6 +41,7 @@ def report() -> int:
 
 
 COMMANDS: dict[str, Callable[[], int]] = {
+    "db-setup": db_setup,
     "collect": collect,
     "sync": sync,
     "analyze": analyze,

@@ -9,7 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    database_url: str = "sqlite:///scout_ai.db"
+    # Local PostgreSQL from docker/compose.yml
+    database_url: str = "postgresql+psycopg://scout:scout@localhost:5434/scout_ai"
 
     claude_code_oauth_token: SecretStr | None = None
 
@@ -17,10 +18,6 @@ class Settings(BaseSettings):
 
     clickup_token: SecretStr | None = None
     clickup_list_id: str | None = None
-
-    powerbi_tenant_id: str | None = None
-    powerbi_client_id: str | None = None
-    powerbi_client_secret: SecretStr | None = None
 
 
 @lru_cache
