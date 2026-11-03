@@ -24,14 +24,71 @@ def collect() -> int:
 
 def fetch() -> int:
     """Read HubSpot and the Marketing CSVs, write the synthetic demo dataset (guide Step 5)."""
-    print("fetch: not implemented yet")
-    return 1
+    from pathlib import Path
+
+    from scout_ai.config import get_settings
+    from scout_ai.demo.synthesize import compare, synthesize, write_dataset
+    from scout_ai.integrations import marketing_csv
+    from scout_ai.integrations.hubspot import fetch_deals
+
+    settings = get_settings()
+    if settings.hubspot_token is None:
+        print("fetch: set HUBSPOT_TOKEN in .env", file=sys.stderr)
+        return 1
+    raw_dir = Path(settings.raw_data_dir)
+    try:
+        spend_csv = marketing_csv.find_export(raw_dir, marketing_csv.SPEND_PATTERN)
+        mql_csv = marketing_csv.find_export(raw_dir, marketing_csv.MQL_PATTERN)
+    except marketing_csv.MarketingCSVError as error:
+        print(f"fetch: {error}", file=sys.stderr)
+        return 1
+    spend = marketing_csv.read_spend(spend_csv)
+    mqls = marketing_csv.read_mqls(mql_csv)
+    if not spend:
+        print(f"fetch: no spend rows in {spend_csv.name}", file=sys.stderr)
+        return 1
+    # Same period as the Marketing exports, so funnel and spend cover the same months.
+    since = min(row.period for row in spend)
+    deals = fetch_deals(settings.hubspot_token.get_secret_value(), since=since)
+
+    tables = synthesize(deals, spend, mqls, seed=settings.demo_seed)
+    manifest = write_dataset(tables, Path(settings.demo_data_dir), seed=settings.demo_seed)
+    print(f"Read {len(deals)} deals, {len(mqls)} MQLs and {len(spend)} spend rows since {since}.")
+    print(f"Wrote {settings.demo_data_dir}: " + _counts(manifest.row_counts))
+
+    checks = compare(deals, spend, mqls, tables)
+    print("\nSynthetic vs real (percentage points):")
+    for check in checks:
+        mark = "ok  " if check.ok else "FAIL"
+        rule = f"tolerance {check.tolerance_pp:.1f}" + (
+            ", must differ" if check.must_differ else ""
+        )
+        print(f"  {mark} {check.metric:<45} diff {check.diff_pp:+.1f}  ({rule})")
+    return 0 if all(check.ok for check in checks) else 1
 
 
 def load() -> int:
     """Load the synthetic demo dataset from data/demo/ into the database (guide Step 5)."""
-    print("load: not implemented yet")
-    return 1
+    from pathlib import Path
+
+    from sqlalchemy.orm import Session
+
+    from scout_ai.config import get_settings
+    from scout_ai.db.session import get_engine
+    from scout_ai.demo.load import DemoDatasetError, load_dataset
+
+    try:
+        with Session(get_engine()) as session:
+            counts = load_dataset(Path(get_settings().demo_data_dir), session)
+    except DemoDatasetError as error:
+        print(f"load: {error}", file=sys.stderr)
+        return 1
+    print("Loaded " + _counts(counts))
+    return 0
+
+
+def _counts(counts: dict[str, int]) -> str:
+    return ", ".join(f"{table} {rows}" for table, rows in counts.items())
 
 
 def analyze() -> int:
