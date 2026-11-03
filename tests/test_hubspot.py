@@ -26,7 +26,7 @@ def _client(pages: list[dict[str, Any]], requests: list[httpx.Request]) -> httpx
 
 @pytest.fixture(autouse=True)
 def _no_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(hubspot.time, "sleep", lambda _: None)
+    monkeypatch.setattr("scout_ai.integrations.hubspot.time.sleep", lambda _: None)
 
 
 def test_fetch_deals_pages_and_maps_fields() -> None:
