@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Acme news</title>
+  <entry>
+    <title>Acme opens an office in São Paulo</title>
+    <link rel="alternate" href="https://acme.test/news/sao-paulo"/>
+    <link rel="enclosure" href="https://acme.test/news/sao-paulo.jpg"/>
+    <published>2026-11-01T12:00:00Z</published>
+  </entry>
+  <entry>
+    <title>Acme releases version 5</title>
+    <link href="https://acme.test/news/v5"/>
+    <updated>2026-10-15T08:00:00Z</updated>
+  </entry>
+</feed>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Acme blog</title>
+    <link>https://acme.test/blog</link>
+    <item>
+      <title>ISO 17025 and your LIMS</title>
+      <link>https://acme.test/blog/iso-17025</link>
+      <pubDate>Mon, 02 Nov 2026 10:00:00 GMT</pubDate>
+      <description>Teaser text that may change.</description>
+    </item>
+    <item>
+      <title>  Building the connected lab  </title>
+      <link>/blog/connected-lab#comments</link>
+      <pubDate>Tue, 20 Oct 2026 09:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title></title>
+      <link>https://acme.test/blog/untitled</link>
+    </item>
+  </channel>
+</rss>
