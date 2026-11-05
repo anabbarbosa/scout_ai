@@ -66,12 +66,16 @@ class DealRow:
     competitors: tuple[str, ...]  # HubSpot option labels; empty when unset or "Unknown / None"
 
 
+# Below this, an amount is a placeholder (0 or 0.01 in our HubSpot), not a deal value.
+MIN_REAL_AMOUNT = Decimal(1)
+
+
 def _amount(raw: str | None) -> Decimal | None:
-    """HubSpot stores an amount nobody filled in as 0: treat it as unknown, not as free."""
+    """Placeholder amounts (0, or 0.01 typed to pass a required field) are unknown, not free."""
     if not raw:
         return None
     amount = Decimal(raw)
-    return amount if amount > 0 else None
+    return amount if amount >= MIN_REAL_AMOUNT else None
 
 
 def _date(raw: str | None) -> date | None:
