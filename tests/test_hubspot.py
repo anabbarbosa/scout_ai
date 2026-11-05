@@ -120,3 +120,12 @@ def test_fetch_deals_raises_on_errors_and_search_cap() -> None:
     capped = _client([{"total": 10_001, "results": []}], [])
     with pytest.raises(HubSpotError, match="10000"):
         fetch_deals("t", since=date(2026, 1, 1), client=capped)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"), [("0", None), ("0.00", None), ("", None), ("10", Decimal(10))]
+)
+def test_zero_amount_means_unknown(raw: str, expected: Decimal | None) -> None:
+    pages = [{"total": 1, "results": [_deal("1", amount=raw, hs_is_closed="false")]}]
+    [deal] = fetch_deals("token", since=date(2026, 1, 1), client=_client(pages, []))
+    assert deal.amount == expected
