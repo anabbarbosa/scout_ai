@@ -1,17 +1,17 @@
 {
-  "generated_at": "2026-11-03T18:23:10+00:00",
+  "generated_at": "2026-11-05T19:18:49+00:00",
   "generator_version": "1",
   "row_counts": {
     "campaigns": 58,
     "deals_competition": 46,
-    "funnel_metrics": 743,
+    "funnel_metrics": 749,
     "marketing_spend": 36
   },
   "seed": 42,
   "sha256": {
-    "campaigns": "4f031b560553ad1481befb5523c78c79287c6fe33bc6b5ea3f0b749e306edf9a",
-    "deals_competition": "657a680b50486b202f23f21ec2fcb5db5e09d5992a9ae93703e68e84f2ac39e3",
-    "funnel_metrics": "812bd95c028ff5f66bd19c9f7a578eb0983fece68f3984ec282b6b57c2b0d785",
-    "marketing_spend": "78389e876fd6934cdeec0333c98ae151ef02667f6d932acebdaa15af3c2ac46b"
+    "campaigns": "90e4d4bb5cb76862e2cb75383e9a2c09c1b9d306bbaa5fea2b6385e3c50e4fe6",
+    "deals_competition": "108dd2204981c9c4a7da3d7fc2f7d198c8421bb44b1b760f572b7dfddf8adaf5",
+    "funnel_metrics": "cb3c35612548da448d95f3fe5ba1be7a3475c37bf7a411f8cc8ab2cfe5479e06",
+    "marketing_spend": "2405dba7defc0ec98b6999fab7d4bce69ebdbc28b583d4a9a7851de886b4ecd9"
   }
 }
