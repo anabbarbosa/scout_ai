@@ -66,6 +66,14 @@ class DealRow:
     competitors: tuple[str, ...]  # HubSpot option labels; empty when unset or "Unknown / None"
 
 
+def _amount(raw: str | None) -> Decimal | None:
+    """HubSpot stores an amount nobody filled in as 0: treat it as unknown, not as free."""
+    if not raw:
+        return None
+    amount = Decimal(raw)
+    return amount if amount > 0 else None
+
+
 def _date(raw: str | None) -> date | None:
     return datetime.fromisoformat(raw).date() if raw else None
 
@@ -95,7 +103,7 @@ def _to_deal(record: dict[str, Any]) -> DealRow:
         pipeline=props.get("pipeline") or "",
         stage=props.get("dealstage") or "",
         outcome=outcome,
-        amount=Decimal(props["amount"]) if props.get("amount") else None,
+        amount=_amount(props.get("amount")),
         created_at=created,
         closed_at=_date(props.get("closedate")) if outcome is not DealOutcome.OPEN else None,
         region=Region.from_label(props.get("sales_region") or ""),
