@@ -175,6 +175,10 @@ class Snapshot(Base):
     fetched_at: Mapped[datetime] = _timestamp()
     content_hash: Mapped[str] = mapped_column(String(64))  # SHA-256 hex of the cleaned text
     raw_text: Mapped[str] = mapped_column(Text)
+    # Set by `scout analyze` (guide Step 4), also when the change had no signal, so each
+    # snapshot is sent to the LLM once. NULL means not analyzed yet.
+    analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    analysis_prompt_version: Mapped[str | None] = mapped_column(String(50))
 
     source: Mapped[Source] = relationship(back_populates="snapshots")
 

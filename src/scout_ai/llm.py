@@ -6,6 +6,7 @@ If ANTHROPIC_API_KEY is set, the CLI uses it instead and bills the API, so we re
 """
 
 import os
+from typing import Any
 
 from claude_agent_sdk import AssistantMessage, ClaudeAgentOptions, ResultMessage, TextBlock, query
 
@@ -19,24 +20,45 @@ class LLMError(RuntimeError):
     pass
 
 
-async def complete(prompt: str, *, model: str = SUMMARY_MODEL, system: str | None = None) -> str:
-    """Send a single prompt with no tools and return Claude's text reply."""
+def _options(model: str, system: str | None, **extra: Any) -> ClaudeAgentOptions:
     if os.environ.get("ANTHROPIC_API_KEY"):
         raise LLMError("ANTHROPIC_API_KEY is set; unset it to use the Claude subscription.")
-
     env: dict[str, str] = {}
     token = get_settings().claude_code_oauth_token
     if token is not None:
         env["CLAUDE_CODE_OAUTH_TOKEN"] = token.get_secret_value()
-
-    options = ClaudeAgentOptions(
-        model=model,
-        system_prompt=system,
-        tools=[],
-        max_turns=1,
-        setting_sources=[],
-        env=env,
+    return ClaudeAgentOptions(
+        model=model, system_prompt=system, tools=[], setting_sources=[], env=env, **extra
     )
+
+
+async def complete_json(
+    prompt: str,
+    *,
+    schema: dict[str, Any],
+    model: str = SUMMARY_MODEL,
+    system: str | None = None,
+) -> Any:
+    """Send a single prompt and return Claude's reply as data matching the JSON schema."""
+    # Structured output takes an extra internal turn to return the data.
+    options = _options(
+        model, system, max_turns=3, output_format={"type": "json_schema", "schema": schema}
+    )
+    result: ResultMessage | None = None
+    # Read the stream to the end: leaving it early breaks the SDK's async generator.
+    async for message in query(prompt=prompt, options=options):
+        if isinstance(message, ResultMessage):
+            result = message
+    if result is None:
+        raise LLMError("Claude returned no result")
+    if result.is_error or result.structured_output is None:
+        raise LLMError(f"Claude request failed: {result.result or result.subtype}")
+    return result.structured_output
+
+
+async def complete(prompt: str, *, model: str = SUMMARY_MODEL, system: str | None = None) -> str:
+    """Send a single prompt with no tools and return Claude's text reply."""
+    options = _options(model, system, max_turns=1)
     parts: list[str] = []
     async for message in query(prompt=prompt, options=options):
         if isinstance(message, AssistantMessage):
