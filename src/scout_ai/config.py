@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     # Marketing CSV exports read by `scout fetch`; they hold personal data, never commit them
     raw_data_dir: str = "data/raw"
 
+    # Competitor collectors (guide Step 3). The first word is the robots.txt product token;
+    # add a contact (URL or team email) so site owners can reach us.
+    collector_user_agent: str = "ScoutAI/0.1 (competitor monitoring bot)"
+    collector_delay_seconds: float = 5.0  # between requests to the same host
+
 
 @lru_cache
 def get_settings() -> Settings:
