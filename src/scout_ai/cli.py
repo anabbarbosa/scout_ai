@@ -122,9 +122,30 @@ def _counts(counts: dict[str, int]) -> str:
 
 
 def analyze() -> int:
-    """Extract signals and generate recommendations with the LLM (guide Steps 4 and 7)."""
-    print("analyze: not implemented yet")
-    return 1
+    """Extract signals from new snapshots with the LLM (guide Step 4)."""
+    import asyncio
+    from collections import Counter
+
+    from sqlalchemy.orm import Session
+
+    from scout_ai.analysis.signals import Status, analyze_snapshots
+    from scout_ai.db.session import get_engine
+
+    with Session(get_engine()) as session:
+        results = asyncio.run(analyze_snapshots(session))
+
+    for result in results:
+        if result.status is Status.BASELINE:
+            continue  # first snapshot of a source: nothing to report
+        detail = f" ({result.detail})" if result.detail else ""
+        count = f" {result.signals}" if result.signals else ""
+        print(f"  {result.status:<9}{count} {result.competitor}: {result.url}{detail}")
+    totals = Counter(result.status for result in results)
+    signals = sum(result.signals for result in results)
+    summary = {str(status): totals[status] for status in Status if totals[status]}
+    print((_counts(summary) or "nothing to analyze") + f"; {signals} new signals")
+    # Recommendations (guide Step 7) will run here once implemented.
+    return 1 if totals[Status.FAILED] else 0
 
 
 def report() -> int:

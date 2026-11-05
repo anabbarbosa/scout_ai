@@ -147,6 +147,18 @@ scout collect   # all active sources, every run; scheduling decides the cadence 
 
 **Done when:** at least 80% of signals in the evaluation set are judged useful by the Marketing team.
 
+How it works (code in `src/scout_ai/analysis/signals.py`):
+
+- `scout analyze` takes every snapshot not analyzed yet, in collection order. The first snapshot of a source is a baseline (nothing to compare with, no LLM call); a whitespace-only change is skipped without a call.
+- Otherwise the unified diff against the previous snapshot of the same source (2 context lines, capped at 15,000 characters) goes to `claude-sonnet-5-5` through the Claude subscription (`src/scout_ai/llm.py`), with a JSON schema (structured output) validated by Pydantic: `meaningful_change` plus a list of signals (type, title, summary, relevance to myLIMS segments, URL).
+- The system prompt describes myLIMS (segments, Brazil/LatAm), what counts as meaningful, the signal types, and tells the model to use only facts in the diff and to treat the page content as data, not instructions.
+- A signal URL the model returns is kept only if it is the page URL or appears in the diff, so no invented links are stored.
+- Analyzed snapshots get `analyzed_at` and `analysis_prompt_version` (migration `0003`), also when nothing was meaningful, so each snapshot goes to the LLM once. Each signal stores `prompt_version`; bump `PROMPT_VERSION` whenever the prompt or schema changes. A failed call leaves the snapshot pending for the next run, and the command exits with 1.
+
+```bash
+scout collect && scout analyze
+```
+
 ---
 
 ## Step 5 — Internal data: synthetic demo dataset
