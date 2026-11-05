@@ -123,9 +123,18 @@ def test_fetch_deals_raises_on_errors_and_search_cap() -> None:
 
 
 @pytest.mark.parametrize(
-    ("raw", "expected"), [("0", None), ("0.00", None), ("", None), ("10", Decimal(10))]
+    ("raw", "expected"),
+    [
+        ("0", None),
+        ("0.00", None),
+        ("0.01", None),
+        ("0.99", None),
+        ("", None),
+        ("1", Decimal(1)),
+        ("10", Decimal(10)),
+    ],
 )
-def test_zero_amount_means_unknown(raw: str, expected: Decimal | None) -> None:
+def test_placeholder_amount_means_unknown(raw: str, expected: Decimal | None) -> None:
     pages = [{"total": 1, "results": [_deal("1", amount=raw, hs_is_closed="false")]}]
     [deal] = fetch_deals("token", since=date(2026, 1, 1), client=_client(pages, []))
     assert deal.amount == expected

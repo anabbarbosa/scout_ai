@@ -171,7 +171,7 @@ HubSpot + data/raw/*.csv -> memory -> synthesize -> data/demo/*.parquet -> git p
 ```
 
 1. **Read** (`integrations/hubspot.py`, `integrations/marketing_csv.py`):
-   - HubSpot: deals (stage, amount, create and close dates, source, campaign, competitor property) and contacts' lifecycle stages, through the CRM v3 API. Do not request names, emails or phone numbers. An amount of 0 means nobody filled it in, so it is read as unknown.
+   - HubSpot: deals (stage, amount, create and close dates, source, campaign, competitor property) and contacts' lifecycle stages, through the CRM v3 API. Do not request names, emails or phone numbers. An amount below 1 (0, or the 0.01 some deals carry) means nobody filled it in, so it is read as unknown.
    - Marketing CSVs in `data/raw/`: monthly spend per region from `Monthly MQL Cost Summary` (one block per month, one row per region); campaign, channel and region of each MQL from `MQL Count`. The MQL list holds names and contact IDs: read only the columns above and drop the rest on load.
    - Campaigns are our "initiatives": each distinct campaign (`Original Source Drill-Down 1`) with its channel and the dates of its first and last MQL.
    - Real records stay in memory only: nothing real is written to disk, logs or the database.
