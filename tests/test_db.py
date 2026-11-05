@@ -41,8 +41,8 @@ def test_setup_creates_schema_and_seeds(engine: Engine) -> None:
     assert _counts(engine) == (len(COMPETITORS), sum(len(c.sources) for c in COMPETITORS))
     with Session(engine) as session:
         tiers = {c.name: c.tier for c in session.scalars(select(Competitor))}
-    assert tiers["LabVantage"] is CompetitorTier.TOP3
-    assert tiers["CloudLIMS"] is CompetitorTier.WATCHLIST
+    top3 = {name for name, tier in tiers.items() if tier is CompetitorTier.TOP3}
+    assert top3 == {"LabWare", "STARLIMS", "Clinisys"}
 
 
 def test_setup_is_idempotent(engine: Engine, sqlite_url: str) -> None:

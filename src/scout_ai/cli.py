@@ -18,8 +18,38 @@ def db_setup() -> int:
 
 def collect() -> int:
     """Fetch competitor sources and store new snapshots (guide Step 3)."""
-    print("collect: not implemented yet")
-    return 1
+    from collections import Counter
+
+    import httpx
+    from sqlalchemy.orm import Session
+
+    from scout_ai.collectors import build_collectors
+    from scout_ai.collectors.http import PoliteClient
+    from scout_ai.collectors.run import Status, collect_sources
+    from scout_ai.config import get_settings
+    from scout_ai.db.session import get_engine
+
+    settings = get_settings()
+    with (
+        httpx.Client(follow_redirects=True, timeout=30.0) as client,
+        Session(get_engine()) as session,
+    ):
+        http = PoliteClient(
+            client,
+            user_agent=settings.collector_user_agent,
+            delay=settings.collector_delay_seconds,
+        )
+        results = collect_sources(session, build_collectors(http))
+
+    for result in results:
+        detail = f" ({result.detail})" if result.detail else ""
+        print(
+            f"  {result.status:<11} {result.competitor} {result.source_type}: {result.url}{detail}"
+        )
+    totals = Counter(result.status for result in results)
+    print(_counts({str(status): totals[status] for status in Status if totals[status]}))
+    # Blocked and unsupported sources are expected; only real failures need attention.
+    return 1 if totals[Status.FAILED] else 0
 
 
 def fetch() -> int:

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:tt="https://teamtailor.com/locations">
+  <channel>
+    <title>Acme jobs</title>
+    <item>
+      <title>Implementation Consultant</title>
+      <description>&lt;p&gt;Long job description that is not stored.&lt;/p&gt;</description>
+      <pubDate>Thu, 05 Nov 2026 12:20:41 +0000</pubDate>
+      <link>https://jobs.acme.test/jobs/101-implementation-consultant</link>
+      <tt:locations>
+        <tt:location><tt:name>São Paulo</tt:name><tt:city>São Paulo</tt:city><tt:country>Brazil</tt:country></tt:location>
+        <tt:location><tt:name>Bogotá</tt:name><tt:city>Bogotá</tt:city><tt:country>Colombia</tt:country></tt:location>
+        <tt:location><tt:name>Campinas</tt:name><tt:city>Campinas</tt:city><tt:country>Brazil</tt:country></tt:location>
+      </tt:locations>
+      <tt:department>Professional Services</tt:department>
+    </item>
+    <item>
+      <title>LIMS Developer</title>
+      <pubDate>Mon, 02 Nov 2026 09:00:00 +0000</pubDate>
+      <link>https://jobs.acme.test/jobs/102-lims-developer</link>
+      <tt:department>Software Development</tt:department>
+    </item>
+  </channel>
+</rss>
