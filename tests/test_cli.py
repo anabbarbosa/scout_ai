@@ -7,7 +7,7 @@ from scout_ai.cli import COMMANDS, main
 from scout_ai.config import get_settings
 from scout_ai.db.session import get_engine
 
-IMPLEMENTED = {"db-setup", "fetch", "load"}
+IMPLEMENTED = {"db-setup", "collect", "fetch", "load"}
 
 
 @pytest.fixture
