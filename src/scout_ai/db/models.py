@@ -266,6 +266,21 @@ class MarketingSpend(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
 
 
+class WeeklySummary(Base):
+    """One weekly summary (guide Step 6), shown on the dashboard's notifications page."""
+
+    __tablename__ = "weekly_summaries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # One per day: running `scout report` again the same day replaces it.
+    report_date: Mapped[date] = mapped_column(Date, unique=True)
+    title: Mapped[str] = mapped_column(String(200))
+    month: Mapped[date | None] = mapped_column(Date)  # month of the funnel and spend tables
+    signal_count: Mapped[int] = mapped_column(default=0, server_default="0")
+    markdown: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = _timestamp(onupdate=True)
+
+
 def priority_score(*, impact: int, cost: int, effort: int, confidence: int) -> float:
     """README §5: impact * confidence / (cost + effort). Computed in code, never by the LLM."""
     return round(impact * confidence / (cost + effort), 3)

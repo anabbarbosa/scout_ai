@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     collector_user_agent: str = "ScoutAI/0.1 (competitor monitoring bot)"
     collector_delay_seconds: float = 5.0  # between requests to the same host
 
+    # Weekly summary (guide Step 6): stored in the database for the dashboard's notifications
+    # page, and also written here as Markdown (ignored by Git like the rest of data/)
+    report_dir: str = "data/reports"
+
 
 @lru_cache
 def get_settings() -> Settings:
