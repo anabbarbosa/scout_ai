@@ -44,15 +44,15 @@ We evaluated Clinisys, LabWare, CloudLIMS, LabVantage and STARLIMS. The criteria
 
 | # | Competitor | Why it is a priority |
 |---|---|---|
-| 1 | **LabVantage** | Most active competitor in our home market: acquired professional services firms in Brazil and Colombia (2023), names Brazil as a growth front (2024) and partners with LIDERSALES for the Brazilian market. Named "2024 Global LIMS Company of the Year" by Frost & Sullivan. |
-| 2 | **LabWare** | Global enterprise benchmark (founded 1987), strong in highly regulated environments (pharma, government, manufacturing). This is who we win or lose large accounts against. In Brazil it operates mainly through integrators. |
-| 3 | **Clinisys** | Consolidated Sunquest, Horizon Lab Systems and ApolloLIMS (2022). HORIZON LIMS covers environmental, water quality, public health and agriculture labs — direct overlap with myLIMS segments. Aggressive acquisition strategy. |
+| 1 | **LabWare** | Global enterprise benchmark (founded 1987), strong in highly regulated environments (pharma, government, manufacturing). This is who we win or lose large accounts against. In Brazil it operates mainly through integrators. |
+| 2 | **STARLIMS** | Promoted on 2026-11-05: it shows up in HubSpot deals. Confience already runs a "best alternative to STARLIMS" page, so it is an active campaign target. Sold by Abbott to Francisco Partners (deal announced in 2021). Strong in regulated clinical and pharma labs. |
+| 3 | **Clinisys** | Back in the top 3 on 2026-11-05, replacing LabVantage. Consolidated Sunquest, Horizon Lab Systems and ApolloLIMS (2022). HORIZON LIMS covers environmental, water quality, public health and agriculture labs — direct overlap with myLIMS segments. Aggressive acquisition strategy. It does not appear in HubSpot deals yet: watch whether that changes. |
 
 **Watchlist (light monitoring):**
 
 | Competitor | Reason |
 |---|---|
-| **STARLIMS** | Confience already runs a "best alternative to STARLIMS" page, so it is an active campaign target. Sold by Abbott to Francisco Partners (deal announced in 2021). Strong in regulated clinical and pharma labs. Promote to the top 3 if it shows up often in HubSpot lost deals. |
+| **LabVantage** | Moved out of the top 3 on 2026-11-05 because it cannot be collected: labvantage.com and Business Wire (where it publishes press releases) answer 403 to bots, robots.txt included, and Google News disallows its RSS. Still a priority by business criteria (2nd after LabWare in deals in the demo dataset, which keeps the HubSpot proportions) and the most active competitor in our home market: acquired professional services firms in Brazil and Colombia (2023), names Brazil as a growth front (2024) and partners with LIDERSALES for the Brazilian market. Named "2024 Global LIMS Company of the Year" by Frost & Sullivan. Its homepage stays listed, so `scout collect` notices if the site lets bots in. |
 | **CloudLIMS** | Low-cost SaaS, per-user pricing, focused on small labs (2–50 people). A threat in the entry-level segment, not in enterprise accounts. |
 
 > ⚠️ **Validate with internal data before finalizing the list.** The prioritization above is based on public research. The definitive criterion should be: who we actually compete against in HubSpot (a "competitor" field on won/lost deals). If that field does not exist, creating it is the project's first task.

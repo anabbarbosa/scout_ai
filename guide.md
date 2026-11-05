@@ -120,6 +120,21 @@ alembic revision --autogenerate -m "describe change"  # after changing a model
 
 **Done when:** running `collect` twice in a row creates snapshots the first time and none the second time (no changes), and each collector has tests using saved HTML fixtures.
 
+How it works (code in `src/scout_ai/collectors/`, fixtures in `tests/fixtures/collectors/`):
+
+- `PageCollector` (homepage, segment, comparison, pricing) stores the page's visible text, without scripts, menus, footers, forms and cookie banners.
+- `ListingCollector` (blog, press, events, jobs) stores one line per item (`date | title | details | url`): from a feed given as the source URL (e.g. the Clinisys Teamtailor `jobs.rss`, which adds department and countries), or the page's own RSS/Atom feed when it links one under its path, else from `<article>` elements or linked headings, else the page text (hub pages and job tables).
+- `http.py` sends every request with `COLLECTOR_USER_AGENT`, checks `robots.txt` first (RFC 9309, with `*` and `$` patterns, which `urllib.robotparser` does not support), waits `COLLECTOR_DELAY_SECONDS` (or the site's `Crawl-delay`) between requests to the same host, and caches responses for the run.
+- Each source ends as `new`, `unchanged`, `blocked` (robots.txt, 401 or 403: never worked around), `unsupported` (reviews: no allowed access path) or `failed`. The command exits with 1 only when a source failed.
+- LabVantage answers 403 to bots, including on `robots.txt`, so it is reported as `blocked`. No allowed alternative was found (Business Wire also blocks bots, Google News disallows its RSS), so it moved to the watchlist (README §3).
+- Sources (`src/scout_ai/db/seed.py`): each top 3 competitor has its homepage, the segment pages that overlap myLIMS (food, environmental/water, agribusiness, chemical, pharma), news/press, blog, events and jobs where the site offers them, collected weekly; watchlist sources monthly. STARLIMS has no events page, and its resource library filters by category in the browser, so one URL covers its news, blogs and product updates.
+- Jobs: LabWare and CloudLIMS career pages, Clinisys job board feed. STARLIMS jobs are on ADP Workforce Now (JavaScript only) and LinkedIn forbids scraping, so neither is collected.
+- Reviews: Capterra's `robots.txt` disallows everything and G2's terms forbid automated access. Options: a paid data agreement with G2, or a monthly manual export by Marketing into `data/raw/`.
+
+```bash
+scout collect   # all active sources, every run; scheduling decides the cadence (Step 6)
+```
+
 ---
 
 ## Step 4 — Signal extraction with the LLM
