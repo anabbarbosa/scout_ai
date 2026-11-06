@@ -7,8 +7,6 @@ from scout_ai.cli import COMMANDS, main
 from scout_ai.config import get_settings
 from scout_ai.db.session import get_engine
 
-IMPLEMENTED = {"db-setup", "collect", "analyze", "fetch", "load"}
-
 
 @pytest.fixture
 def env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[pytest.MonkeyPatch]:
@@ -24,10 +22,8 @@ def env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[pytest.Monk
     get_engine.cache_clear()
 
 
-@pytest.mark.parametrize("command", sorted(set(COMMANDS) - IMPLEMENTED))
-def test_stub_commands_are_registered(command: str, capsys: pytest.CaptureFixture[str]) -> None:
-    assert main([command]) == 1
-    assert "not implemented yet" in capsys.readouterr().out
+def test_every_guide_command_is_registered() -> None:
+    assert set(COMMANDS) == {"db-setup", "collect", "analyze", "fetch", "load", "report"}
 
 
 def test_requires_a_command() -> None:
@@ -58,3 +54,29 @@ def test_load_reports_a_missing_dataset(
     get_settings.cache_clear()
     assert main(["load"]) == 1
     assert "manifest.json" in capsys.readouterr().err
+
+
+def test_report_stores_the_summary_and_writes_the_file(
+    env: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+
+    from scout_ai.db.models import WeeklySummary
+    from scout_ai.db.setup import setup_database
+
+    url = f"sqlite:///{(tmp_path / 'scout.db').as_posix()}"
+    setup_database(url)
+    env.setenv("DATABASE_URL", url)
+    env.setenv("REPORT_DIR", str(tmp_path / "reports"))
+    get_settings.cache_clear()
+    get_engine.cache_clear()
+
+    assert main(["report"]) == 0
+    assert main(["report"]) == 0  # same day: replaced, not duplicated
+    [path] = (tmp_path / "reports").glob("weekly-*.md")
+    markdown = path.read_text(encoding="utf-8")
+    assert markdown.startswith("# Scout AI weekly summary")
+    with Session(get_engine()) as session:
+        [summary] = session.scalars(select(WeeklySummary)).all()
+    assert summary.markdown == markdown

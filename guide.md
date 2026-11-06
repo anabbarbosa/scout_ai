@@ -4,6 +4,10 @@ Step-by-step plan to build Scout AI. For the product vision, competitors and roa
 
 Each step ends with a **Done when** check. Don't move on until it passes.
 
+Scout AI is a **hackathon project**: checks that need weeks of real use by the Marketing team (reader feedback, monthly approval rates, measured impact) are out of scope for the demo and are adapted to something the demo can show when each step is built.
+
+**Status (2026-11-05):** Steps 1 to 6 are implemented. Open items: Step 0 is not recorded in the repo; Step 4's evaluation set (item 5) waits for real diffs; Step 6's notifications page is part of Step 10. Next: Step 7.
+
 ---
 
 ## Proposed stack
@@ -20,7 +24,7 @@ These were the defaults chosen before Step 1; change them through a PR if the te
 | ORM / migrations | SQLAlchemy + Alembic | Standard, well-documented |
 | LLM | Claude Agent SDK, authenticated with the Claude subscription (no API key) | Summaries: `claude-sonnet-5-5`; recommendations: `claude-opus-5-5` |
 | Scheduling | Cron / GitHub Actions to start; a job queue later if needed | Keep the MVP simple |
-| Dashboard | FastAPI (API) + JavaScript web front end | Read-only view over the Postgres tables; see Step 10 |
+| Dashboard | FastAPI (API) + JavaScript web front end | Read-only view over the Postgres tables, including the notifications page with the weekly summaries; see Step 10 |
 | Tests / quality | `pytest`, `ruff`, `mypy` | |
 
 ---
@@ -34,7 +38,7 @@ These were the defaults chosen before Step 1; change them through a PR if the te
    - Are `original source`, campaign and lifecycle stage filled in consistently?
    - Is there a **competitor** property on deals? If not, create it (dropdown: LabVantage, LabWare, Clinisys, STARLIMS, CloudLIMS, Other, None) and ask Sales to fill it from now on.
 3. **Validate the competitor list** using won/lost deals (see README §3).
-4. **Agree on the first users** (who on Marketing reads the weekly summary) and the delivery channel (email, Teams, ClickUp doc).
+4. **Agree on the first users** (who on Marketing reads the weekly summary) and the delivery channel. Decided on 2026-11-05: the summary is shown on a notifications page in the web dashboard (Steps 6 and 10), not sent by email or Teams.
 
 **Done when:** credentials work, the competitor field exists, and the top 3 list is confirmed with data.
 
@@ -91,8 +95,9 @@ Create these tables with Alembic migrations:
 | `campaigns` | Marketing campaigns seen in HubSpot, our "initiatives" (Steps 5 and 7) | name, channel, first_mql_at, last_mql_at |
 | `marketing_spend` | Monthly Marketing spend per region, from the cost exports | period, region, amount |
 | `recommendations` | AI output | action, evidence (JSON with links), impact, cost, effort, confidence, priority, status, clickup_task_id |
+| `weekly_summaries` | Weekly summaries for the dashboard's notifications page (Step 6) | report_date, title, month, signal_count, markdown |
 
-`campaigns`, `marketing_spend` and `funnel_metrics.region` come from migration `0002`. Spend is only known per region, not per channel or campaign, so cost metrics (cost per MQL, CAC) are per region.
+`campaigns`, `marketing_spend` and `funnel_metrics.region` come from migration `0002`; `snapshots.analyzed_at` and `analysis_prompt_version` from `0003` (Step 4); `weekly_summaries` from `0004` (Step 6). Spend is only known per region, not per channel or campaign, so cost metrics (cost per MQL, CAC) are per region.
 
 **Done when:** migrations run on a clean database and a seed script inserts the five competitors with their sources.
 
@@ -200,12 +205,26 @@ HubSpot + data/raw/*.csv -> memory -> synthesize -> data/demo/*.parquet -> git p
    - Funnel snapshot: leads → opportunities → deals by region and channel, versus the previous period
    - Spend per region: cost per MQL, pipeline created per dollar spent and Marketing CAC, versus the previous period
    - Deals won/lost against each competitor
-2. Render as Markdown/HTML and deliver through the channel chosen in Step 0.
+2. Render as Markdown and store it in the database for the dashboard's notifications page (Step 10), the channel chosen in Step 0.
 3. Schedule `collect → load → report` weekly. Rerun `fetch` only when the demo dataset should reflect newer real patterns.
 4. Label the summary as built on synthetic demo data.
-5. Collect feedback from readers for 3–4 weeks and adjust.
 
-**Done when:** the Marketing team reads the summary every week and has used it at least once to make a decision.
+**Done when:** `scout report` builds the summary from the current database, with every section of item 1, and stores it in `weekly_summaries`, ready for the notifications page. Showing it on that page is checked in Step 10.
+
+How it works (code in `src/scout_ai/reports/`):
+
+- `scout report` stores the summary in `weekly_summaries` (one per day: running it again the same day replaces it) and also writes it to `data/reports/weekly-YYYY-MM-DD.md` (`REPORT_DIR`; ignored by Git like the rest of `data/`) for reading locally.
+- Signals: those detected in the 7 days before the report date, grouped by competitor, top 3 first, each with its type, link, summary and why it matters.
+- Funnel and spend: monthly, because that is how the internal data is aggregated. The report uses the latest month with Marketing spend, so a month still in progress is never compared with a full one, against the month before. By region: MQLs, opportunities, deals won, spend, cost per MQL, opportunities per $1,000 and Marketing CAC (spend per deal won). By channel: MQLs, opportunities, deals won and MQL-to-opportunity rate.
+- Leads and SQLs are not tracked yet, so the funnel starts at MQLs. Pipeline value per dollar needs opportunity amounts, which no table stores; opportunities per $1,000 stand in for it until they do.
+- Competitive deals: won and lost per competitor in the report month and year to date (by close date), win rate and open deals.
+- The summary opens with the demo-data label (item 4).
+- Delivery (item 2): the dashboard's notifications page lists the stored summaries, newest first, and shows the Markdown of the one selected (Step 10). There is no email or Teams message.
+- Weekly run (item 3): `scripts/weekly.ps1` runs `collect`, `analyze` and `report` in order, keeps going if a step fails, and exits with 1 if any did. It is not scheduled yet, because the database only runs on a laptop; the script header has the Task Scheduler command for when it is.
+
+```powershell
+.\scripts\weekly.ps1   # or: scout collect; scout analyze; scout report
+```
 
 ---
 
@@ -250,26 +269,27 @@ In the demo, items 1 and 2 run as a **dry run**: log the ClickUp task and HubSpo
 
 The dashboard is our own web app, not a BI tool. It shows what the weekly summary shows, with filters and history, and lets Marketing act on recommendations. It does not try to replace HubSpot's own reports (README §4 and §7).
 
-1. **API** (`src/scout_ai/api/`, FastAPI): read-only endpoints over the existing tables, e.g. `GET /competitors`, `GET /signals?competitor=&type=&since=`, `GET /funnel?from=&to=&region=&channel=`, `GET /spend?from=&to=&region=`, `GET /campaigns`, `GET /deals/competition`, `GET /recommendations?status=`. The only write is `PATCH /recommendations/{id}` to approve or reject one, which triggers the ClickUp task from Step 8.
+1. **API** (`src/scout_ai/api/`, FastAPI): read-only endpoints over the existing tables, e.g. `GET /competitors`, `GET /signals?competitor=&type=&since=`, `GET /funnel?from=&to=&region=&channel=`, `GET /spend?from=&to=&region=`, `GET /campaigns`, `GET /deals/competition`, `GET /recommendations?status=`, `GET /notifications` (weekly summaries, newest first) and `GET /notifications/{id}`. The only write is `PATCH /recommendations/{id}` to approve or reject one, which triggers the ClickUp task from Step 8.
 2. **Front end** (`web/`): a JavaScript single-page app consuming the API. Views:
    - Signals feed per competitor (new this week, by type, with links to the source)
    - Funnel by region, channel and campaign: leads → opportunities → deals won, versus the previous period
    - Spend per region: cost per MQL, pipeline per dollar and CAC over time
    - Win/loss against each competitor
    - Recommendations ranked by priority, with evidence links and approve/reject buttons
+   - Notifications: the weekly summaries from `weekly_summaries` (Step 6), newest first, each opening its full Markdown; a badge shows when a new one arrived
 3. **Auth:** company single sign-on (Microsoft Entra ID) in front of both the API and the front end. The API connects to Postgres with a read-mostly database role.
 4. **Deploy:** the API and front end as containers next to the Postgres from `docker/`; add them to `docker/compose.yml` for local development.
 5. **Demo label:** show a visible "synthetic demo data, generated from real patterns" banner on every view.
 
-**Done when:** Marketing uses the dashboard instead of the emailed summary for at least one weekly review, and approving a recommendation there creates its ClickUp task (dry run in the demo).
+**Done when:** every view works on the demo data, the notifications page shows the latest weekly summary, and approving a recommendation there creates its ClickUp task (dry run in the demo).
 
 ---
 
 ## Definition of done for the MVP
 
 - [ ] Top 3 competitors monitored automatically every week
-- [ ] Synthetic demo dataset generated from HubSpot and Marketing spend patterns, shared through Git and loaded with `scout load`
-- [ ] Weekly summary delivered and used by Marketing
+- [x] Synthetic demo dataset generated from HubSpot and Marketing spend patterns, shared through Git and loaded with `scout load`
+- [ ] Weekly summary generated every week and shown on the dashboard's notifications page (generation done; page in Step 10)
 - [ ] Recommendations with evidence and scores, turned into ClickUp tasks (dry run in the demo)
 - [ ] Web dashboard (FastAPI + JavaScript) live for Marketing
 - [ ] At least one recommendation executed and its impact measured (after the demo, with real data)

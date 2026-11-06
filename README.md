@@ -4,6 +4,34 @@ Vision, scope, monitored competitors and roadmap. For step-by-step development i
 
 > **Core question:** How can we improve our marketing positioning to generate more sales opportunities and grow myLIMS revenue?
 
+> **Hackathon project.** Scout AI is built as a demo: internal data is synthetic (Step 5 of the guide), and success checks that need weeks of real use by Marketing are adapted to what the demo can show.
+
+## Status
+
+| Guide step | State |
+|---|---|
+| 1. Project setup | Done: CI runs `ruff`, `mypy` and `pytest` |
+| 2. Data model | Done: migrations `0001` to `0004`, seed with competitors and sources |
+| 3. Competitor collectors | Done: 35 sources; LabVantage blocked, reviews not collected |
+| 4. Signal extraction | Done with `claude-sonnet-5-5`; the evaluation set waits for real diffs |
+| 5. Synthetic demo dataset | Done: `data/demo/`, regenerated on 2026-11-05 |
+| 6. Weekly summary | Done: stored for the dashboard's notifications page |
+| 7–10. Recommendations, closed loop, hardening, dashboard | Not started |
+
+## Running it
+
+```bash
+docker compose -f docker/compose.yml up -d    # PostgreSQL on localhost:5434
+pip install -r requirements-dev.txt
+scout db-setup    # create the database, migrate, seed competitors and sources
+scout load        # load the synthetic demo dataset from data/demo/
+scout collect     # fetch competitor pages; a snapshot only when the text changed
+scout analyze     # turn changes into signals with Claude (log in with `claude login`)
+scout report      # weekly summary: stored for the notifications page and written to data/reports/
+```
+
+`scripts/weekly.ps1` runs `collect`, `analyze` and `report` in order. `scout fetch` regenerates the demo dataset and only runs where the HubSpot token and the Marketing CSVs are. Details are in [guide.md](guide.md).
+
 ---
 
 ## 1. Vision
@@ -76,7 +104,7 @@ We evaluated Clinisys, LabWare, CloudLIMS, LabVantage and STARLIMS. The criteria
 - Published content (blog, whitepapers, case studies) and recurring themes
 - Press releases: acquisitions, partnerships, new customers, awards
 - Job openings (signal regional expansion and product investment)
-- G2/Capterra reviews: recurring praise and complaints
+- G2/Capterra reviews: recurring praise and complaints (not collected: Capterra's `robots.txt` disallows bots and G2's terms forbid automated access; it would need a paid data agreement or a manual export)
 - Public pricing and offers (especially relevant for CloudLIMS)
 
 ---
@@ -121,7 +149,7 @@ Suggested priority: `impact × confidence ÷ (cost + effort)`. Approved recommen
 | Phase | Deliverable | Success criterion |
 |---|---|---|
 | **0 — Discovery** | Map available data in HubSpot and the Marketing cost exports; confirm competitors from deals | Competitor list validated by data; API access in place |
-| **1 — Monitoring** | Periodic collection of signals for the top 3 competitors + weekly summary | Marketing team reads and uses the summary |
+| **1 — Monitoring** | Periodic collection of signals for the top 3 competitors + weekly summary | Weekly summary generated from collected signals and shown on the dashboard's notifications page |
 | **2 — Integration** | Connect HubSpot and Marketing spend: leads → opportunities → deals and cost by region, channel and campaign | Reliable view of which channels generate deals, not just leads |
 | **3 — Recommendations** | AI cross-references external and internal signals and produces scored actions | At least one recommendation executed and measured per month |
 | **4 — Closed loop** | Recommendations → ClickUp → results measured in HubSpot | Measure the pipeline impact of suggested actions |
@@ -132,7 +160,8 @@ Suggested priority: `impact × confidence ÷ (cost + effort)`. Approved recommen
 
 ## 7. Risks and caveats
 
-- **CRM data quality:** attribution is only useful if source, campaign and competitor fields are filled in consistently.
+- **CRM data quality:** attribution is only useful if source, campaign and competitor fields are filled in consistently. Example already found: deal amounts left at `0`, or typed as `0.01` to pass a required field, in 69 of 357 deals; `scout fetch` reads them as unknown.
+- **Sites that block bots:** some competitors (LabVantage today) refuse automated access. We never work around a block; such a competitor is reported as `blocked` and cannot be in the top 3 while it lasts.
 - **Public data collection:** respect terms of use and `robots.txt`; prefer APIs and official sources.
 - **Third-party sources:** rankings from vendor content sites and consultancies are opinion, not fact. Always record the source.
 - **Scope:** resist the temptation to become a BI tool or a CRM. The product is the recommendation.

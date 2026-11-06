@@ -149,9 +149,27 @@ def analyze() -> int:
 
 
 def report() -> int:
-    """Build and deliver the weekly summary (guide Step 6)."""
-    print("report: not implemented yet")
-    return 1
+    """Build the weekly summary for the notifications page (guide Step 6)."""
+    from datetime import date
+    from pathlib import Path
+
+    from sqlalchemy.orm import Session
+
+    from scout_ai.config import get_settings
+    from scout_ai.db.session import get_engine
+    from scout_ai.reports.weekly import build_weekly_report, render_markdown, save_summary
+
+    today = date.today()
+    with Session(get_engine()) as session, session.begin():
+        weekly = build_weekly_report(session, today)
+        markdown = render_markdown(weekly)
+        summary = save_summary(session, weekly, markdown)
+        print(f"Stored summary {summary.id} ({summary.signal_count} signals)")
+    path = Path(get_settings().report_dir) / f"weekly-{today:%Y-%m-%d}.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(markdown, encoding="utf-8")
+    print(f"Wrote {path}")
+    return 0
 
 
 COMMANDS: dict[str, Callable[[], int]] = {
