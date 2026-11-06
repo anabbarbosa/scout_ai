@@ -4,19 +4,20 @@ Vision, scope, monitored competitors and roadmap. For step-by-step development i
 
 > **Core question:** How can we improve our marketing positioning to generate more sales opportunities and grow myLIMS revenue?
 
-> **Hackathon project.** Scout AI is built as a demo: internal data is synthetic (Step 5 of the guide), and success checks that need weeks of real use by Marketing are adapted to what the demo can show.
+> **Hackathon project.** Scout AI is built as a demo: internal data is synthetic (Step 5 of the guide), Marketing does not use it during the hackathon, nothing runs on a schedule, and success checks that need weeks of real use are adapted to what the demo can show.
 
 ## Status
 
 | Guide step | State |
 |---|---|
 | 1. Project setup | Done: CI runs `ruff`, `mypy` and `pytest` |
-| 2. Data model | Done: migrations `0001` to `0004`, seed with competitors and sources |
+| 2. Data model | Done: migrations `0001` to `0005`, seed with competitors and sources |
 | 3. Competitor collectors | Done: 35 sources; LabVantage blocked, reviews not collected |
 | 4. Signal extraction | Done with `claude-sonnet-5-5`; the evaluation set waits for real diffs |
 | 5. Synthetic demo dataset | Done: `data/demo/`, regenerated on 2026-11-05 |
 | 6. Weekly summary | Done: stored for the dashboard's notifications page |
-| 7–10. Recommendations, closed loop, hardening, dashboard | Not started |
+| 7. Recommendations | Done with `claude-opus-5-5`: evidence checked against stored data, priority computed in code; approved in the dashboard during the demo |
+| 8–10. Closed loop, hardening, dashboard | Not started |
 
 ## Running it
 
@@ -27,10 +28,11 @@ scout db-setup    # create the database, migrate, seed competitors and sources
 scout load        # load the synthetic demo dataset from data/demo/
 scout collect     # fetch competitor pages; a snapshot only when the text changed
 scout analyze     # turn changes into signals with Claude (log in with `claude login`)
+scout recommend   # 3 to 5 prioritized Marketing actions, each citing stored evidence
 scout report      # weekly summary: stored for the notifications page and written to data/reports/
 ```
 
-`scripts/weekly.ps1` runs `collect`, `analyze` and `report` in order. `scout fetch` regenerates the demo dataset and only runs where the HubSpot token and the Marketing CSVs are. Details are in [guide.md](guide.md).
+`scripts/weekly.ps1` runs `collect`, `analyze`, `recommend` and `report` in order; for the hackathon it runs on demand before the demo, not on a schedule. `scout fetch` regenerates the demo dataset and only runs where the HubSpot token and the Marketing CSVs are. Details are in [guide.md](guide.md).
 
 ---
 

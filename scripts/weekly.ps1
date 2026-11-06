@@ -1,4 +1,4 @@
-# Weekly run (guide Step 6.3): collect -> analyze -> report.
+# Weekly run (guide Step 6.3): collect -> analyze -> recommend -> report.
 #
 # Run it from anywhere: it moves to the repository root and uses its .venv and .env.
 # Every step runs even if an earlier one reported failures (a blocked or broken source
@@ -15,7 +15,7 @@ Set-Location (Split-Path -Parent $PSScriptRoot)
 $scout = Join-Path (Get-Location) ".venv\Scripts\scout.exe"
 
 $failed = @()
-foreach ($step in @("collect", "analyze", "report")) {
+foreach ($step in @("collect", "analyze", "recommend", "report")) {
     Write-Output "== scout $step ($(Get-Date -Format s))"
     & $scout $step
     if ($LASTEXITCODE -ne 0) { $failed += $step }

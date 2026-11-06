@@ -23,7 +23,15 @@ def env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[pytest.Monk
 
 
 def test_every_guide_command_is_registered() -> None:
-    assert set(COMMANDS) == {"db-setup", "collect", "analyze", "fetch", "load", "report"}
+    assert set(COMMANDS) == {
+        "db-setup",
+        "collect",
+        "analyze",
+        "fetch",
+        "load",
+        "recommend",
+        "report",
+    }
 
 
 def test_requires_a_command() -> None:
@@ -80,3 +88,18 @@ def test_report_stores_the_summary_and_writes_the_file(
     with Session(get_engine()) as session:
         [summary] = session.scalars(select(WeeklySummary)).all()
     assert summary.markdown == markdown
+
+
+def test_recommend_skips_an_empty_database(
+    env: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from scout_ai.db.setup import setup_database
+
+    url = f"sqlite:///{(tmp_path / 'scout.db').as_posix()}"
+    setup_database(url)  # competitors and sources only: no signals, no internal data
+    env.setenv("DATABASE_URL", url)
+    get_settings.cache_clear()
+    get_engine.cache_clear()
+
+    assert main(["recommend"]) == 0  # the model is not called
+    assert "Nothing to recommend" in capsys.readouterr().out

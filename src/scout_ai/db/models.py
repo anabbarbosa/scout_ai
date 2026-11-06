@@ -295,7 +295,9 @@ class Recommendation(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     action: Mapped[str] = mapped_column(Text)
-    # [{"kind": "signal" | "funnel_metric" | "deal", "id": ..., "url": ..., "note": ...}]
+    # One item per fact the recommendation rests on (guide Step 7), see
+    # scout_ai.analysis.recommendations.Fact: {"ref", "kind", "label", "fact", "note",
+    # "url" (signal source, else null), "records": {table: [ids of the stored rows]}}
     evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSONType, default=list)
     impact: Mapped[int] = mapped_column(SmallInteger)
     cost: Mapped[int] = mapped_column(SmallInteger)
@@ -307,6 +309,7 @@ class Recommendation(Base):
     )
     clickup_task_id: Mapped[str | None] = mapped_column(String(50))
     outcome: Mapped[str | None] = mapped_column(Text)  # measured effect after execution (Step 8)
+    prompt_version: Mapped[str | None] = mapped_column(String(50))
     created_at: Mapped[datetime] = _timestamp()
     updated_at: Mapped[datetime] = _timestamp(onupdate=True)
 
