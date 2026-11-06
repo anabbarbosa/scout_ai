@@ -1,4 +1,4 @@
-"""Command-line entry points: db-setup, collect, fetch, load, analyze, report."""
+"""Command-line entry points: db-setup, collect, fetch, load, analyze, recommend, report."""
 
 import argparse
 import sys
@@ -144,8 +144,38 @@ def analyze() -> int:
     signals = sum(result.signals for result in results)
     summary = {str(status): totals[status] for status in Status if totals[status]}
     print((_counts(summary) or "nothing to analyze") + f"; {signals} new signals")
-    # Recommendations (guide Step 7) will run here once implemented.
     return 1 if totals[Status.FAILED] else 0
+
+
+def recommend() -> int:
+    """Propose prioritized Marketing actions from signals and internal data (guide Step 7)."""
+    import asyncio
+
+    from pydantic import ValidationError
+    from sqlalchemy.orm import Session
+
+    from scout_ai import llm
+    from scout_ai.analysis.recommendations import generate_recommendations
+    from scout_ai.db.session import get_engine
+
+    with Session(get_engine()) as session:
+        try:
+            result = asyncio.run(generate_recommendations(session))
+        except (llm.LLMError, ValidationError) as error:
+            print(f"recommend: {str(error).splitlines()[0]}", file=sys.stderr)
+            return 1
+        if result.skipped:
+            print(f"Nothing to recommend: {result.skipped}")
+            return 0
+        session.commit()
+        for rec in result.stored:
+            print(f"  {rec.priority:5.2f}  #{rec.id} {rec.action}")
+        for rejection in result.rejected:
+            print(f"  rejected  {rejection.action} ({rejection.reason})")
+    replaced = f", replaced {result.replaced} from earlier today" if result.replaced else ""
+    print(f"Stored {len(result.stored)} recommendations{replaced}")
+    # Every proposal rejected means the model did not cite the data: flag the run.
+    return 1 if not result.stored else 0
 
 
 def report() -> int:
@@ -178,6 +208,7 @@ COMMANDS: dict[str, Callable[[], int]] = {
     "fetch": fetch,
     "load": load,
     "analyze": analyze,
+    "recommend": recommend,
     "report": report,
 }
 

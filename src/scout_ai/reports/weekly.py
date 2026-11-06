@@ -1,6 +1,8 @@
 """The weekly summary for Marketing: `scout report` (guide Step 6).
 
-Signals are those detected in the 7 days before the report date. Funnel, spend and cost
+Signals are those detected in the 7 days before the report date. Recommendations
+(guide Step 7) are the top ones of the latest `scout recommend` run in that week, up to
+the report date, still proposed or approved. Funnel, spend and cost
 metrics are monthly, because that is how the internal data is aggregated: the report
 uses the latest month that has Marketing spend (so a month still in progress is never
 compared with a full one) against the month before. Competitive deals are counted by
@@ -14,6 +16,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -25,12 +28,19 @@ from scout_ai.db.models import (
     DealOutcome,
     FunnelMetric,
     MarketingSpend,
+    Recommendation,
+    RecommendationStatus,
     Region,
     Signal,
     WeeklySummary,
 )
 
 SIGNAL_DAYS = 7
+TOP_RECOMMENDATIONS = 5
+RECOMMENDATIONS_LABEL = (
+    "Built on the synthetic demo data: they show how the system works, not what the "
+    "business should do."
+)
 DEMO_LABEL = (
     "Internal numbers in this summary come from the synthetic demo dataset, generated "
     "from real HubSpot and Marketing patterns: they show how the report works, not the "
@@ -96,6 +106,20 @@ class SignalItem:
     url: str
 
 
+@dataclass(frozen=True)
+class RecommendationItem:
+    id: int
+    action: str
+    status: str
+    priority: float
+    impact: int
+    cost: int
+    effort: int
+    confidence: int
+    evidence: list[dict[str, Any]]
+    created_at: datetime
+
+
 @dataclass
 class WeeklyReport:
     report_date: date
@@ -103,6 +127,7 @@ class WeeklyReport:
     month: date | None  # None when there is no spend data yet
     previous_month: date | None
     signals: list[SignalItem] = field(default_factory=list)
+    recommendations: list[RecommendationItem] = field(default_factory=list)
     regions: dict[str, tuple[FunnelCounts, FunnelCounts]] = field(default_factory=dict)
     channels: dict[str, tuple[FunnelCounts, FunnelCounts]] = field(default_factory=dict)
     competitors: list[CompetitorDeals] = field(default_factory=list)
@@ -114,6 +139,7 @@ def build_weekly_report(session: Session, report_date: date) -> WeeklyReport:
     previous = _previous_month(month) if month else None
     report = WeeklyReport(report_date, since, month, previous)
     report.signals = _signals(session, since, report_date)
+    report.recommendations = _recommendations(session, since, report_date)
     if month is not None and previous is not None:
         report.regions = _by_region(session, month, previous)
         report.channels = _by_channel(session, month, previous)
@@ -140,6 +166,42 @@ def _signals(session: Session, since: date, until: date) -> list[SignalItem]:
     ).all()
     return [
         SignalItem(c.name, c.tier, s.type, s.title, s.summary, s.relevance, s.url) for s, c in rows
+    ]
+
+
+def _recommendations(session: Session, since: date, until: date) -> list[RecommendationItem]:
+    """The top recommendations of the latest run in the window, still open or approved."""
+    start = datetime.combine(since, time(), UTC)
+    end = datetime.combine(until + timedelta(days=1), time(), UTC)
+    window = (
+        Recommendation.status.in_([RecommendationStatus.PROPOSED, RecommendationStatus.APPROVED]),
+        Recommendation.created_at >= start,
+        Recommendation.created_at < end,
+    )
+    latest = session.scalar(select(func.max(Recommendation.created_at)).where(*window))
+    if latest is None:
+        return []
+    run_start = datetime.combine(latest.date(), time(), UTC)
+    rows = session.scalars(
+        select(Recommendation)
+        .where(*window, Recommendation.created_at >= run_start)
+        .order_by(Recommendation.priority.desc(), Recommendation.id)
+        .limit(TOP_RECOMMENDATIONS)
+    )
+    return [
+        RecommendationItem(
+            r.id,
+            r.action,
+            r.status,
+            r.priority,
+            r.impact,
+            r.cost,
+            r.effort,
+            r.confidence,
+            r.evidence,
+            r.created_at,
+        )
+        for r in rows
     ]
 
 
@@ -263,6 +325,7 @@ def render_markdown(report: WeeklyReport) -> str:
         "",
     ]
     lines += _render_signals(report)
+    lines += _render_recommendations(report)
     if report.month is None:
         lines += ["## Funnel, spend and competitive deals", "", "No internal data loaded yet."]
         return "\n".join(lines) + "\n"
@@ -287,6 +350,35 @@ def _render_signals(report: WeeklyReport) -> list[str]:
             if s.relevance:
                 lines.append(f"  *Why it matters:* {s.relevance}")
         lines.append("")
+    return lines
+
+
+def _render_recommendations(report: WeeklyReport) -> list[str]:
+    if not report.recommendations:
+        return ["## Recommendations", "", "No recommendations this week.", ""]
+    generated = report.recommendations[0].created_at
+    lines = [
+        f"## Recommendations (generated {generated:%Y-%m-%d})",
+        "",
+        f"> {RECOMMENDATIONS_LABEL}",
+        "",
+    ]
+    for number, r in enumerate(report.recommendations, 1):
+        status = " (approved)" if r.status == RecommendationStatus.APPROVED else ""
+        lines.append(f"{number}. **{r.action}**{status}  ")
+        lines.append(
+            f"   Priority {r.priority:.2f}: impact {r.impact}, confidence {r.confidence}, "
+            f"cost {r.cost}, effort {r.effort}. Evidence:"
+        )
+        for item in r.evidence:
+            label = item.get("label") or item.get("ref", "")
+            name = f"[{label}]({item['url']})" if item.get("url") else str(label)
+            lines.append(f"   - {name}: {item.get('note', '')}")
+    lines += [
+        "",
+        "Priority is impact x confidence / (cost + effort), computed from the 1 to 5 scores.",
+        "",
+    ]
     return lines
 
 
