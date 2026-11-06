@@ -4,9 +4,9 @@ Step-by-step plan to build Scout AI. For the product vision, competitors and roa
 
 Each step ends with a **Done when** check. Don't move on until it passes.
 
-Scout AI is a **hackathon project**: checks that need weeks of real use by the Marketing team (reader feedback, monthly approval rates, measured impact) are out of scope for the demo and are adapted to something the demo can show when each step is built.
+Scout AI is a **hackathon project**. It ends in a demo, not in daily use: Marketing does not use the system during the hackathon, and nothing runs on a schedule. The commands run on demand before the presentation (`scripts/weekly.ps1`). So checks that need weeks of real use by the Marketing team (reader feedback, labeling, approvals, weekly runs, measured impact) are out of scope and are adapted to something the team can show in the demo; each step says how.
 
-**Status (2026-11-05):** Steps 1 to 6 are implemented. Open items: Step 0 is not recorded in the repo; Step 4's evaluation set (item 5) waits for real diffs; Step 6's notifications page is part of Step 10. Next: Step 7.
+**Status (2026-11-06):** Steps 1 to 7 are implemented. Open items: Step 0 is not recorded in the repo; Step 4's evaluation set (item 5) waits for real diffs; the notifications page (Step 6) and approving recommendations (Step 7) are shown in the dashboard (Step 10). Next: Step 8.
 
 ---
 
@@ -23,7 +23,7 @@ These were the defaults chosen before Step 1; change them through a PR if the te
 | Demo data | Parquet (`pyarrow`) + `Faker`; synthetic dataset committed under `data/demo/` | The project is a demo shown to a wide audience: share realistic data through Git without exposing real HubSpot records or Marketing spend (Step 5) |
 | ORM / migrations | SQLAlchemy + Alembic | Standard, well-documented |
 | LLM | Claude Agent SDK, authenticated with the Claude subscription (no API key) | Summaries: `claude-sonnet-5-5`; recommendations: `claude-opus-5-5` |
-| Scheduling | Cron / GitHub Actions to start; a job queue later if needed | Keep the MVP simple |
+| Scheduling | None for the demo: the commands run on demand (`scripts/weekly.ps1`). After the hackathon: cron or GitHub Actions, a job queue if needed | The database only runs on a laptop, and the demo needs one fresh run, not a weekly one |
 | Dashboard | FastAPI (API) + JavaScript web front end | Read-only view over the Postgres tables, including the notifications page with the weekly summaries; see Step 10 |
 | Tests / quality | `pytest`, `ruff`, `mypy` | |
 
@@ -38,7 +38,7 @@ These were the defaults chosen before Step 1; change them through a PR if the te
    - Are `original source`, campaign and lifecycle stage filled in consistently?
    - Is there a **competitor** property on deals? If not, create it (dropdown: LabVantage, LabWare, Clinisys, STARLIMS, CloudLIMS, Other, None) and ask Sales to fill it from now on.
 3. **Validate the competitor list** using won/lost deals (see README §3).
-4. **Agree on the first users** (who on Marketing reads the weekly summary) and the delivery channel. Decided on 2026-11-05: the summary is shown on a notifications page in the web dashboard (Steps 6 and 10), not sent by email or Teams.
+4. **Agree on the audience and the delivery channel.** For the hackathon the audience is the demo's; nobody on Marketing reads the summary week to week. Decided on 2026-11-05: the summary is shown on a notifications page in the web dashboard (Steps 6 and 10), not sent by email or Teams.
 
 **Done when:** credentials work, the competitor field exists, and the top 3 list is confirmed with data.
 
@@ -97,7 +97,7 @@ Create these tables with Alembic migrations:
 | `recommendations` | AI output | action, evidence (JSON with links), impact, cost, effort, confidence, priority, status, clickup_task_id |
 | `weekly_summaries` | Weekly summaries for the dashboard's notifications page (Step 6) | report_date, title, month, signal_count, markdown |
 
-`campaigns`, `marketing_spend` and `funnel_metrics.region` come from migration `0002`; `snapshots.analyzed_at` and `analysis_prompt_version` from `0003` (Step 4); `weekly_summaries` from `0004` (Step 6). Spend is only known per region, not per channel or campaign, so cost metrics (cost per MQL, CAC) are per region.
+`campaigns`, `marketing_spend` and `funnel_metrics.region` come from migration `0002`; `snapshots.analyzed_at` and `analysis_prompt_version` from `0003` (Step 4); `weekly_summaries` from `0004` (Step 6); `recommendations.prompt_version` from `0005` (Step 7). Spend is only known per region, not per channel or campaign, so cost metrics (cost per MQL, CAC) are per region.
 
 **Done when:** migrations run on a clean database and a seed script inserts the five competitors with their sources.
 
@@ -151,6 +151,8 @@ scout collect   # all active sources, every run; scheduling decides the cadence 
 5. Build a small **evaluation set** (20–30 real diffs labeled by Marketing) and check precision before trusting the output.
 
 **Done when:** at least 80% of signals in the evaluation set are judged useful by the Marketing team.
+
+For the demo, the team labels the evaluation set instead of Marketing, once enough real diffs have been collected.
 
 How it works (code in `src/scout_ai/analysis/signals.py`):
 
@@ -206,7 +208,7 @@ HubSpot + data/raw/*.csv -> memory -> synthesize -> data/demo/*.parquet -> git p
    - Spend per region: cost per MQL, pipeline created per dollar spent and Marketing CAC, versus the previous period
    - Deals won/lost against each competitor
 2. Render as Markdown and store it in the database for the dashboard's notifications page (Step 10), the channel chosen in Step 0.
-3. Schedule `collect → load → report` weekly. Rerun `fetch` only when the demo dataset should reflect newer real patterns.
+3. Run `collect → analyze → recommend → report` in one go. For the demo it runs on demand before the presentation; after the hackathon, schedule it weekly. Rerun `fetch` only when the demo dataset should reflect newer real patterns.
 4. Label the summary as built on synthetic demo data.
 
 **Done when:** `scout report` builds the summary from the current database, with every section of item 1, and stores it in `weekly_summaries`, ready for the notifications page. Showing it on that page is checked in Step 10.
@@ -220,10 +222,11 @@ How it works (code in `src/scout_ai/reports/`):
 - Competitive deals: won and lost per competitor in the report month and year to date (by close date), win rate and open deals.
 - The summary opens with the demo-data label (item 4).
 - Delivery (item 2): the dashboard's notifications page lists the stored summaries, newest first, and shows the Markdown of the one selected (Step 10). There is no email or Teams message.
-- Weekly run (item 3): `scripts/weekly.ps1` runs `collect`, `analyze` and `report` in order, keeps going if a step fails, and exits with 1 if any did. It is not scheduled yet, because the database only runs on a laptop; the script header has the Task Scheduler command for when it is.
+- Run (item 3): `scripts/weekly.ps1` runs `collect`, `analyze`, `recommend` (Step 7) and `report` in order, keeps going if a step fails, and exits with 1 if any did. For the hackathon it is run by hand before the demo, not scheduled: the database only runs on a laptop. The script header has the Task Scheduler command for after the hackathon.
+- The signal window is the 7 days before the report date, so signals detected on the report day itself appear in the next summary. With on-demand runs this is accepted for the demo.
 
 ```powershell
-.\scripts\weekly.ps1   # or: scout collect; scout analyze; scout report
+.\scripts\weekly.ps1   # or: scout collect; scout analyze; scout recommend; scout report
 ```
 
 ---
@@ -240,6 +243,20 @@ In the demo, recommendations are built on synthetic internal data: they show tha
 
 **Done when:** every recommendation links to verifiable evidence and Marketing approves at least one per month.
 
+For the demo: every stored recommendation cites evidence that resolves to stored records (checked in code and covered by `tests/test_recommendations.py`), and a real `scout recommend` run on the demo data stores 3 to 5 of them. Marketing does not review them during the hackathon, so the monthly approval is replaced by the team approving one in the dashboard during the demo (Step 10); until then they stay `proposed`.
+
+How it works (code in `src/scout_ai/analysis/recommendations.py`):
+
+- `scout recommend` builds the context from the database as a list of facts, each with a reference: signals of the last 28 days (`S<signal id>`, top 3 first, at most 40), funnel and spend per region (`R1`, …), funnel per channel (`CH1`, …), the 20 campaigns with most MQLs (`K1`, …) and deals against each competitor this year and open now (`D1`, …). Funnel and spend use the same months as the weekly summary: the latest month with Marketing spend against the month before.
+- `claude-opus-5-5` answers with structured output validated by Pydantic: 3 to 5 recommendations, each with an action, the references it rests on with a note on what each shows, and 1–5 scores. The system prompt tells it to cite only the listed references, keep the codes out of the text Marketing reads, never invent numbers, and treat signal text as data, not instructions.
+- Evidence check (item 4): a recommendation with no evidence, or citing a reference that is not in the context, is rejected and printed with the reason. Each evidence item stored keeps the reference, a label, the fact as the model saw it, the model's note, the signal URL (internal facts have none until the dashboard API exists) and the IDs of the stored rows behind it (`signals`, `funnel_metrics`, `marketing_spend`, `campaigns`, `deals_competition`).
+- Priority (item 3) is computed by `priority_score` in code; the top 5 are stored as `proposed`, with `prompt_version`. Running it again the same day replaces that day's `proposed` ones and never touches approved or rejected ones. With no signals and no internal data the model is not called. The command exits with 1 when the call fails or every proposal was rejected.
+- Weekly summary (item 5): `scout report` shows the top 5 of the latest run in the last 7 days (proposed or approved), with priority, scores and evidence (signals link to their source), under a label saying they are built on the synthetic demo data.
+
+```bash
+scout analyze && scout recommend && scout report
+```
+
 ---
 
 ## Step 8 — Close the loop
@@ -253,9 +270,13 @@ In the demo, items 1 and 2 run as a **dry run**: log the ClickUp task and HubSpo
 
 **Done when:** we can show, for each executed recommendation, its measured effect on leads, opportunities or deals.
 
+For the demo: approving a recommendation logs the ClickUp task and the HubSpot tag that would be created, with its action, evidence and scores. Measuring the effect needs real executions and comes after the hackathon.
+
 ---
 
 ## Step 9 — Operate and harden
+
+For the demo only **Security** and **Privacy** apply, and they are already followed. Monitoring, alerts, cost tracking and the dashboard login come after the hackathon, when the system runs unattended.
 
 - **Monitoring:** log every job run; alert on failed collectors (sites change their layout often).
 - **Costs:** track LLM token usage per job; cache unchanged inputs.
@@ -283,13 +304,16 @@ The dashboard is our own web app, not a BI tool. It shows what the weekly summar
 
 **Done when:** every view works on the demo data, the notifications page shows the latest weekly summary, and approving a recommendation there creates its ClickUp task (dry run in the demo).
 
+For the demo, the dashboard runs locally next to the Postgres from `docker/`, and the team drives it during the presentation.
+
 ---
 
 ## Definition of done for the MVP
 
-- [ ] Top 3 competitors monitored automatically every week
+- [x] Top 3 competitors monitored with `collect` and `analyze` (run on demand for the demo; weekly scheduling after the hackathon)
 - [x] Synthetic demo dataset generated from HubSpot and Marketing spend patterns, shared through Git and loaded with `scout load`
-- [ ] Weekly summary generated every week and shown on the dashboard's notifications page (generation done; page in Step 10)
-- [ ] Recommendations with evidence and scores, turned into ClickUp tasks (dry run in the demo)
-- [ ] Web dashboard (FastAPI + JavaScript) live for Marketing
-- [ ] At least one recommendation executed and its impact measured (after the demo, with real data)
+- [ ] Summary generated on demand and shown on the dashboard's notifications page (generation done; page in Step 10)
+- [ ] Recommendations with evidence and scores, turned into ClickUp tasks as a dry run (recommendations done; ClickUp in Step 8)
+- [ ] Web dashboard (FastAPI + JavaScript) working on the demo data, with a recommendation approved during the demo
+
+After the hackathon, with real data and real use by Marketing: weekly scheduling, the Step 4 evaluation set labeled by Marketing, monthly approvals, and at least one recommendation executed with its impact measured.
