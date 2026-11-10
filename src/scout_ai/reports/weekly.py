@@ -49,7 +49,7 @@ DEMO_LABEL = (
 REGION_LABELS = {
     Region.NORTH_AMERICA: "North America",
     Region.BRAZIL: "Brazil",
-    Region.LATAM: "LatAm",
+    Region.LATAM: "Latam",
     Region.EMEA: "EMEA",
     Region.APAC: "APAC",
     Region.OTHER: "Other",
