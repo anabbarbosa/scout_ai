@@ -1,0 +1,11 @@
+# Only pyproject.toml, requirements.txt, README.md and src/ go into the dashboard image.
+.git
+.venv
+.env
+.env.*
+data
+tests
+**/__pycache__
+.mypy_cache
+.pytest_cache
+.ruff_cache

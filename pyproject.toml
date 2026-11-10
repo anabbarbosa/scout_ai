@@ -21,6 +21,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "scout_ai.db" = ["migrations/*.py", "migrations/*.mako", "migrations/versions/*.py"]
+"scout_ai" = ["web/*"]
 
 [tool.ruff]
 line-length = 100
