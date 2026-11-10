@@ -30,7 +30,10 @@ def test_every_guide_command_is_registered() -> None:
         "fetch",
         "load",
         "recommend",
+        "approve",
+        "reject",
         "report",
+        "serve",
     }
 
 

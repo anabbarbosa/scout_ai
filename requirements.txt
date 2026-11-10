@@ -21,6 +21,6 @@ pydantic-settings>=2.11.0
 # LLM — Claude Agent SDK, authenticated with the Claude subscription (see src/scout_ai/llm.py)
 claude-agent-sdk>=0.2.172
 
-# Web dashboard API (guide Step 10) — uncomment when it starts
-# fastapi>=0.118.0
-# uvicorn[standard]>=0.37.0
+# Web dashboard API (guide Step 10)
+fastapi>=0.118.0
+uvicorn[standard]>=0.37.0

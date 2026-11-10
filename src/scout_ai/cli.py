@@ -1,4 +1,5 @@
-"""Command-line entry points: db-setup, collect, fetch, load, analyze, recommend, report."""
+"""Command-line entry points: db-setup, collect, fetch, load, analyze, recommend, approve,
+reject, report, serve."""
 
 import argparse
 import sys
@@ -178,6 +179,55 @@ def recommend() -> int:
     return 1 if not result.stored else 0
 
 
+def approve(recommendation_id: int) -> int:
+    """Approve a recommendation; show its ClickUp task and HubSpot tags (Step 8, dry run)."""
+    from sqlalchemy.orm import Session
+
+    from scout_ai.db.session import get_engine
+    from scout_ai.review import ReviewError
+    from scout_ai.review import approve as approve_recommendation
+
+    with Session(get_engine()) as session, session.begin():
+        try:
+            review = approve_recommendation(session, recommendation_id)
+        except ReviewError as error:
+            print(f"approve: {error}", file=sys.stderr)
+            return 1
+        print(f"Approved #{recommendation_id}: {review.recommendation.action}")
+        if review.task is not None:
+            print("\nDry run, ClickUp task that would be created:")
+            print(f"  name: {review.task.name}")
+            print(f"  tags: {', '.join(review.task.tags)}")
+            print("  description:")
+            for line in review.task.markdown_description.splitlines():
+                print(f"    {line}" if line else "")
+        if review.tags:
+            print("\nDry run, HubSpot campaigns that would be tagged:")
+            for tag in review.tags:
+                print(f"  {tag.campaign}: {tag.tag}")
+        else:
+            print("\nNo campaign in the evidence: no HubSpot tag.")
+    return 0
+
+
+def reject(recommendation_id: int) -> int:
+    """Reject a recommendation (Step 8)."""
+    from sqlalchemy.orm import Session
+
+    from scout_ai.db.session import get_engine
+    from scout_ai.review import ReviewError
+    from scout_ai.review import reject as reject_recommendation
+
+    with Session(get_engine()) as session, session.begin():
+        try:
+            review = reject_recommendation(session, recommendation_id)
+        except ReviewError as error:
+            print(f"reject: {error}", file=sys.stderr)
+            return 1
+        print(f"Rejected #{recommendation_id}: {review.recommendation.action}")
+    return 0
+
+
 def report() -> int:
     """Build the weekly summary for the notifications page (guide Step 6)."""
     from datetime import date
@@ -202,15 +252,32 @@ def report() -> int:
     return 0
 
 
-COMMANDS: dict[str, Callable[[], int]] = {
+def serve(host: str, port: int) -> int:
+    """Run the web dashboard and its API (guide Step 10)."""
+    import uvicorn
+
+    from scout_ai.api import create_app
+
+    if host not in {"127.0.0.1", "localhost"}:
+        print(f"serve: the dashboard has no login yet; anyone who reaches {host} can use it")
+    uvicorn.run(create_app(), host=host, port=port)
+    return 0
+
+
+COMMANDS: dict[str, Callable[..., int]] = {
     "db-setup": db_setup,
     "collect": collect,
     "fetch": fetch,
     "load": load,
     "analyze": analyze,
     "recommend": recommend,
+    "approve": approve,
+    "reject": reject,
     "report": report,
+    "serve": serve,
 }
+# Commands that act on one recommendation, given by its ID.
+RECOMMENDATION_COMMANDS = {"approve", "reject"}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -218,9 +285,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
     for name, func in COMMANDS.items():
-        subparsers.add_parser(name, help=func.__doc__)
+        command = subparsers.add_parser(name, help=func.__doc__)
+        if name in RECOMMENDATION_COMMANDS:
+            command.add_argument("id", type=int, help="recommendation ID, as `recommend` prints it")
+
+        if name == "serve":
+            command.add_argument("--host", default="127.0.0.1", help="default: localhost only")
+            command.add_argument("--port", type=int, default=8000)
 
     args = parser.parse_args(argv)
+    if args.command in RECOMMENDATION_COMMANDS:
+        return COMMANDS[args.command](args.id)
+    if args.command == "serve":
+        return serve(args.host, args.port)
     return COMMANDS[args.command]()
 
 

@@ -49,3 +49,4 @@ desktop.ini
 # Data: only the synthetic demo dataset is committed (guide Step 5)
 data/*
 !data/demo/
+.claude/launch.json

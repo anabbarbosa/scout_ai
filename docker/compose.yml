@@ -1,6 +1,7 @@
-# Local PostgreSQL. Usage, from the repository root:
+# Local PostgreSQL and the web dashboard. Usage, from the repository root:
 #   docker compose -f docker/compose.yml up -d --build
-#   scout db-setup
+#   scout db-setup && scout load
+# Dashboard: http://localhost:8000 (or run `scout serve` outside Docker)
 name: scout-ai
 
 services:
@@ -14,6 +15,22 @@ services:
     volumes:
       # PostgreSQL 18+ images keep data under /var/lib/postgresql/<major>/docker
       - pgdata:/var/lib/postgresql
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: ..
+      dockerfile: docker/dashboard.Dockerfile
+    image: scout-ai-dashboard
+    container_name: scout-ai-dashboard
+    environment:
+      DATABASE_URL: postgresql+psycopg://scout:scout@postgres:5432/scout_ai
+    ports:
+      # Localhost only: the dashboard has no login (guide Step 9).
+      - "127.0.0.1:${SCOUT_DASHBOARD_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

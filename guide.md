@@ -6,7 +6,7 @@ Each step ends with a **Done when** check. Don't move on until it passes.
 
 Scout AI is a **hackathon project**. It ends in a demo, not in daily use: Marketing does not use the system during the hackathon, and nothing runs on a schedule. The commands run on demand before the presentation (`scripts/weekly.ps1`). So checks that need weeks of real use by the Marketing team (reader feedback, labeling, approvals, weekly runs, measured impact) are out of scope and are adapted to something the team can show in the demo; each step says how.
 
-**Status (2026-11-06):** Steps 1 to 7 are implemented. Open items: Step 0 is not recorded in the repo; Step 4's evaluation set (item 5) waits for real diffs; the notifications page (Step 6) and approving recommendations (Step 7) are shown in the dashboard (Step 10). Next: Step 8.
+**Status (2026-11-10):** Steps 1 to 10 are implemented for the demo (Step 8 as a dry run). Open items: Step 0 is not recorded in the repo; Step 4's evaluation set (item 5) waits for real diffs; measuring outcomes (Step 8, items 3 and 4) and the parts of Step 9 other than security and privacy come after the hackathon. Next: rehearse the demo (`scripts/weekly.ps1`, then approve a recommendation in the dashboard).
 
 ---
 
@@ -62,7 +62,10 @@ These were the defaults chosen before Step 1; change them through a PR if the te
      demo/              # synthesize.py (real patterns -> synthetic tables), load.py
      analysis/          # LLM summarization and recommendations
      reports/           # weekly summary rendering
-     cli.py             # entry points: db-setup, collect, fetch, load, analyze, report
+     review.py          # approve/reject a recommendation: ClickUp task and HubSpot tags (Step 8)
+     api/               # FastAPI app for the web dashboard (Step 10)
+     web/               # dashboard front end: static HTML, CSS and JavaScript, served by the API
+     cli.py             # entry points: db-setup, collect, fetch, load, analyze, recommend, approve, reject, report, serve
    data/raw/            # Marketing CSV exports, personal data: ignored by Git (Step 5)
    data/demo/           # synthetic Parquet dataset, committed to Git (Step 5)
    tests/
@@ -272,17 +275,33 @@ In the demo, items 1 and 2 run as a **dry run**: log the ClickUp task and HubSpo
 
 For the demo: approving a recommendation logs the ClickUp task and the HubSpot tag that would be created, with its action, evidence and scores. Measuring the effect needs real executions and comes after the hackathon.
 
+How it works (code in `src/scout_ai/review.py`, tests in `tests/test_review.py`):
+
+- `scout approve <id>` approves a `proposed` recommendation (the ID `scout recommend` prints) and `scout reject <id>` rejects one. A recommendation is reviewed once: approving or rejecting one that is not `proposed`, or an unknown ID, fails with exit code 1. A later `scout recommend` run never replaces reviewed ones (Step 7).
+- Item 1: approving builds the body of ClickUp's create-task call (`POST /api/v2/list/{list_id}/task`): the action as the name; a Markdown description with priority, the four scores, each evidence item (label linked to the signal source when there is one, the model's note and the fact) and the synthetic-data note; tags `scout-ai` and `scout-ai-rec-<id>`.
+- Item 2: every campaign cited in the evidence (`records.campaigns`) gets the tag `scout-ai-rec-<id>`, so its later MQLs and deals can be traced back to the recommendation. A recommendation with no campaign in its evidence has no tag.
+- Dry run: both are returned and printed, never sent. There is no ClickUp or HubSpot write client and no token for them yet, so `clickup_task_id` stays empty. The demo campaign names are synthetic and do not exist in HubSpot anyway.
+- The dashboard's approve and reject buttons (Step 10) call the same `approve` and `reject` functions through `PATCH /api/recommendations/{id}`, and show the dry-run task under the card.
+- After the hackathon: a ClickUp client that sends the task and stores its ID, a HubSpot write scope for the campaign tag (Step 9 keeps every other integration read-only), then items 3 and 4.
+
+```bash
+scout recommend            # prints the stored recommendations with their IDs
+scout approve 12           # or: scout reject 12
+```
+
 ---
 
 ## Step 9 — Operate and harden
 
-For the demo only **Security** and **Privacy** apply, and they are already followed. Monitoring, alerts, cost tracking and the dashboard login come after the hackathon, when the system runs unattended.
+For the demo only **Security** and **Privacy** apply, and they are already followed. Monitoring, alerts and cost tracking come after the hackathon, when the system runs unattended.
 
 - **Monitoring:** log every job run; alert on failed collectors (sites change their layout often).
 - **Costs:** track LLM token usage per job; cache unchanged inputs.
 - **Security:** keep tokens in a secrets manager, never in the repo; only the machine that runs `scout fetch` needs them, together with the Marketing CSVs. Give integrations read-only scopes except ClickUp task creation.
 - **Privacy:** real HubSpot records never leave memory during `fetch`, and the Marketing CSVs stay in `data/raw/` (ignored by Git); only the synthetic dataset is stored and committed (Step 5).
-- **Dashboard:** protect the web dashboard (Step 10) with company login; never expose the database directly.
+- **Dashboard:** never expose the database directly; the web dashboard (Step 10) reads it only through the API.
+
+Checked for the demo (2026-11-10): no token or real record is tracked by Git (only `data/demo/` under `data/`); `.env` and `data/raw/` are ignored; the HubSpot client only reads; ClickUp and HubSpot writes are a dry run (Step 8), so no write token exists yet. The dashboard listens on localhost only: `scout serve` binds to `127.0.0.1` by default (and warns on any other host), and the Docker container publishes its port on `127.0.0.1` only. The API never exposes the database, only the endpoints below.
 
 ---
 
@@ -290,21 +309,36 @@ For the demo only **Security** and **Privacy** apply, and they are already follo
 
 The dashboard is our own web app, not a BI tool. It shows what the weekly summary shows, with filters and history, and lets Marketing act on recommendations. It does not try to replace HubSpot's own reports (README §4 and §7).
 
-1. **API** (`src/scout_ai/api/`, FastAPI): read-only endpoints over the existing tables, e.g. `GET /competitors`, `GET /signals?competitor=&type=&since=`, `GET /funnel?from=&to=&region=&channel=`, `GET /spend?from=&to=&region=`, `GET /campaigns`, `GET /deals/competition`, `GET /recommendations?status=`, `GET /notifications` (weekly summaries, newest first) and `GET /notifications/{id}`. The only write is `PATCH /recommendations/{id}` to approve or reject one, which triggers the ClickUp task from Step 8.
-2. **Front end** (`web/`): a JavaScript single-page app consuming the API. Views:
+1. **API** (`src/scout_ai/api/`, FastAPI, under `/api`): read-only endpoints over the existing tables, e.g. `GET /competitors`, `GET /signals?competitor=&type=&since=`, `GET /funnel?from=&to=&region=&channel=`, `GET /spend?from=&to=&region=`, `GET /campaigns`, `GET /deals/competition`, `GET /recommendations?status=`, `GET /notifications` (weekly summaries, newest first) and `GET /notifications/{id}`. The only write is `PATCH /recommendations/{id}` to approve or reject one, which calls `scout_ai.review` and returns the ClickUp task and HubSpot tags from Step 8 (dry run in the demo).
+2. **Front end** (`src/scout_ai/web/`): a JavaScript single-page app consuming the API. Views:
    - Signals feed per competitor (new this week, by type, with links to the source)
    - Funnel by region, channel and campaign: leads → opportunities → deals won, versus the previous period
    - Spend per region: cost per MQL, pipeline per dollar and CAC over time
    - Win/loss against each competitor
    - Recommendations ranked by priority, with evidence links and approve/reject buttons
    - Notifications: the weekly summaries from `weekly_summaries` (Step 6), newest first, each opening its full Markdown; a badge shows when a new one arrived
-3. **Auth:** company single sign-on (Microsoft Entra ID) in front of both the API and the front end. The API connects to Postgres with a read-mostly database role.
-4. **Deploy:** the API and front end as containers next to the Postgres from `docker/`; add them to `docker/compose.yml` for local development.
-5. **Demo label:** show a visible "synthetic demo data, generated from real patterns" banner on every view.
+3. **Deploy:** the API and front end as containers next to the Postgres from `docker/`; add them to `docker/compose.yml` for local development.
+4. **Demo label:** show a visible "synthetic demo data, generated from real patterns" banner on every view.
 
 **Done when:** every view works on the demo data, the notifications page shows the latest weekly summary, and approving a recommendation there creates its ClickUp task (dry run in the demo).
 
 For the demo, the dashboard runs locally next to the Postgres from `docker/`, and the team drives it during the presentation.
+
+How it works (API in `src/scout_ai/api/`, front end in `src/scout_ai/web/`, tests in `tests/test_api.py`):
+
+- `scout serve` runs the API and serves the front end from the same process (`http://127.0.0.1:8000`; `--host`, `--port`). The front end is plain HTML, CSS and JavaScript modules with no build step and no external scripts, so it works offline during the presentation. Interactive API docs are at `/api/docs`.
+- Endpoints: `GET /api/meta` (banner, regions, channels, months, latest month with spend), `/api/competitors`, `/api/signals?competitor=&type=&since=`, `/api/funnel?by=region|channel|campaign|total&from=&to=&region=&channel=&campaign=` (one row per month and group), `/api/spend?from=&to=&region=` (spend with cost per MQL, opportunities per $1,000 and CAC per region and month), `/api/campaigns`, `/api/deals/competition?year=`, `/api/recommendations?status=`, `/api/notifications` and `/api/notifications/{id}`.
+- `PATCH /api/recommendations/{id}` with `{"status": "approved"}` or `{"status": "rejected"}` calls `scout_ai.review` (Step 8) and returns the dry-run ClickUp task and HubSpot tags; the page shows them under the approved card. An unknown ID answers 404, a recommendation already reviewed 409.
+- Views, in the Confience brand and grouped as Market, Our numbers and Act: Overview (default; competitor moves → where they cost us in deals → the top plays to approve), Competitors (head-to-head win/loss and a battlecard per competitor: myLIMS vs them from the README §3 research in `web/competitors.js`, the plays that cite them, their deals and their signals), Signals, Funnel, Spend, Plays (the recommendations) and Weekly briefings (the notifications: the list of summaries and the selected one rendered from Markdown). The old routes `#/notifications`, `#/recommendations` and `#/deals` still open their new views. The funnel compares the chosen month with the month before, by region, channel or campaign; its charts stop at the latest month with spend, the last complete month of the exports. Pipeline per dollar is shown as opportunities per $1,000, as in the weekly summary.
+- Notifications badge: the browser remembers the latest summary it showed (`localStorage`), and the badge appears when a newer one is stored.
+- Safety: all text from the API goes into the page as text, never as HTML. The summaries' Markdown is rendered by a small renderer that escapes everything first and keeps only `http(s)` links, because signal text comes from competitor websites.
+- Banner (item 4) on every view, with the text from `/api/meta`.
+- Docker (item 3): `docker/compose.yml` builds the `dashboard` service from `docker/dashboard.Dockerfile`, next to Postgres, on `http://localhost:8000`.
+
+```bash
+scout serve                                   # http://127.0.0.1:8000
+docker compose -f docker/compose.yml up -d --build   # or Postgres and the dashboard in Docker
+```
 
 ---
 
@@ -312,8 +346,8 @@ For the demo, the dashboard runs locally next to the Postgres from `docker/`, an
 
 - [x] Top 3 competitors monitored with `collect` and `analyze` (run on demand for the demo; weekly scheduling after the hackathon)
 - [x] Synthetic demo dataset generated from HubSpot and Marketing spend patterns, shared through Git and loaded with `scout load`
-- [ ] Summary generated on demand and shown on the dashboard's notifications page (generation done; page in Step 10)
-- [ ] Recommendations with evidence and scores, turned into ClickUp tasks as a dry run (recommendations done; ClickUp in Step 8)
-- [ ] Web dashboard (FastAPI + JavaScript) working on the demo data, with a recommendation approved during the demo
+- [x] Summary generated on demand and shown on the dashboard's notifications page
+- [x] Recommendations with evidence and scores, turned into ClickUp tasks as a dry run (`scout approve` or the dashboard's Approve button)
+- [ ] Web dashboard (FastAPI + JavaScript) working on the demo data, with a recommendation approved during the demo (dashboard done; the approval happens in the presentation)
 
 After the hackathon, with real data and real use by Marketing: weekly scheduling, the Step 4 evaluation set labeled by Marketing, monthly approvals, and at least one recommendation executed with its impact measured.
