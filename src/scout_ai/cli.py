@@ -1,5 +1,5 @@
 """Command-line entry points: db-setup, collect, fetch, load, analyze, recommend, approve,
-reject, report, serve."""
+reject, report, serve, pages."""
 
 import argparse
 import sys
@@ -264,6 +264,18 @@ def serve(host: str, port: int) -> int:
     return 0
 
 
+def pages(out: str) -> int:
+    """Build a static copy of the dashboard for GitHub Pages."""
+    from pathlib import Path
+
+    from scout_ai.db.session import get_engine
+    from scout_ai.pages import build_site
+
+    site = build_site(get_engine(), Path(out))
+    print(f"Wrote the static dashboard to {site}; publish that folder (e.g. a gh-pages branch)")
+    return 0
+
+
 COMMANDS: dict[str, Callable[..., int]] = {
     "db-setup": db_setup,
     "collect": collect,
@@ -275,6 +287,7 @@ COMMANDS: dict[str, Callable[..., int]] = {
     "reject": reject,
     "report": report,
     "serve": serve,
+    "pages": pages,
 }
 # Commands that act on one recommendation, given by its ID.
 RECOMMENDATION_COMMANDS = {"approve", "reject"}
@@ -292,12 +305,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         if name == "serve":
             command.add_argument("--host", default="127.0.0.1", help="default: localhost only")
             command.add_argument("--port", type=int, default=8000)
+        if name == "pages":
+            command.add_argument("--out", default="site", help="output folder, replaced")
 
     args = parser.parse_args(argv)
     if args.command in RECOMMENDATION_COMMANDS:
         return COMMANDS[args.command](args.id)
     if args.command == "serve":
         return serve(args.host, args.port)
+    if args.command == "pages":
+        return pages(args.out)
     return COMMANDS[args.command]()
 
 
