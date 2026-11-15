@@ -50,3 +50,6 @@ desktop.ini
 data/*
 !data/demo/
 .claude/launch.json
+
+# Static dashboard built by `scout pages`
+site/

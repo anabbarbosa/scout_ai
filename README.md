@@ -34,6 +34,7 @@ scout recommend   # 3 to 5 prioritized Marketing actions, each citing stored evi
 scout approve 12  # approve one: shows the ClickUp task and HubSpot tags (dry run); `scout reject 12`
 scout report      # weekly summary: stored for the notifications page and written to data/reports/
 scout serve       # web dashboard on http://127.0.0.1:8000 (overview, competitor battlecards, signals, funnel, spend, plays, weekly briefings)
+scout pages       # static copy of the dashboard in site/ for GitHub Pages (snapshot of the database; approvals are not saved)
 ```
 
 `scripts/weekly.ps1` runs `collect`, `analyze`, `recommend` and `report` in order; for the hackathon it runs on demand before the demo, not on a schedule. `scout fetch` regenerates the demo dataset and only runs where the HubSpot token and the Marketing CSVs are. Details are in [guide.md](guide.md).
