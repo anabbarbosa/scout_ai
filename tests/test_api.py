@@ -225,3 +225,29 @@ def test_notifications_list_and_detail(client: TestClient) -> None:
     detail = client.get(f"/api/notifications/{item['id']}").json()
     assert detail["markdown"].startswith("# Scout AI weekly summary")
     assert client.get("/api/notifications/999").status_code == 404
+
+
+def test_pages_builds_a_static_copy_without_saving_approvals(
+    engine: Engine, tmp_path: Path
+) -> None:
+    import json
+
+    from scout_ai.pages import build_site
+
+    site = build_site(engine, tmp_path / "site")
+    page = (site / "index.html").read_text(encoding="utf-8")
+    assert 'data-snapshot="snapshot.json"' in page
+    assert '"static/app.js"' in page and '"/static/' not in page
+    assert (site / "static" / "snapshot.js").exists()
+    assert (site / ".nojekyll").exists()
+
+    snapshot = json.loads((site / "snapshot.json").read_text(encoding="utf-8"))
+    assert set(snapshot["funnel"]) == {"region", "channel", "campaign", "total"}
+    proposed = [r["id"] for r in snapshot["recommendations"] if r["status"] == "proposed"]
+    assert proposed and sorted(map(int, snapshot["approvals"])) == sorted(proposed)
+    approval = snapshot["approvals"][str(proposed[0])]
+    assert approval["recommendation"]["status"] == "approved"
+    assert approval["clickup_task"]["name"]
+    with Session(engine) as session:  # the dry run was rolled back
+        statuses = set(session.scalars(select(Recommendation.status)))
+    assert RecommendationStatus.APPROVED not in statuses

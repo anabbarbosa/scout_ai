@@ -29,7 +29,14 @@ function h(tag, props = {}, ...children) {
   return node;
 }
 
+// The GitHub Pages copy sets data-snapshot on <html> and has no server behind it.
+const SNAPSHOT = document.documentElement.dataset.snapshot || null;
+
 async function api(path, options = {}) {
+  if (SNAPSHOT) {
+    const { staticApi } = await import("./snapshot.js");
+    return staticApi(SNAPSHOT, path, options);
+  }
   const response = await fetch(`/api${path}`, {
     headers: { "Content-Type": "application/json" },
     ...options,

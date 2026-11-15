@@ -34,6 +34,7 @@ def test_every_guide_command_is_registered() -> None:
         "reject",
         "report",
         "serve",
+        "pages",
     }
 
 
