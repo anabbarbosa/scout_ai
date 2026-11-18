@@ -35,11 +35,11 @@
   --series-5: #56bbc2;
   --series-6: #c2410c;
 
-  --c-labware: #15295a;
-  --c-starlims: #7f56d9;
-  --c-clinisys: #d97706;
-  --c-labvantage: #db2777;
-  --c-cloudlims: #059669;
+  --c-kestrel: #15295a;
+  --c-orbis: #7f56d9;
+  --c-meridian: #d97706;
+  --c-halcyon: #db2777;
+  --c-nimbus: #059669;
 
   --ui: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
   --display: "Poppins", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
@@ -72,11 +72,11 @@
     --series-4: #b197fc;
     --series-5: #2c9ea6;
     --series-6: #fb8c4b;
-    --c-labware: #8ea6e8;
-    --c-starlims: #b197fc;
-    --c-clinisys: #fbbf24;
-    --c-labvantage: #f472b6;
-    --c-cloudlims: #34d399;
+    --c-kestrel: #8ea6e8;
+    --c-orbis: #b197fc;
+    --c-meridian: #fbbf24;
+    --c-halcyon: #f472b6;
+    --c-nimbus: #34d399;
   }
 }
 :root[data-theme="dark"] {
@@ -105,11 +105,11 @@
   --series-4: #b197fc;
   --series-5: #2c9ea6;
   --series-6: #fb8c4b;
-  --c-labware: #8ea6e8;
-  --c-starlims: #b197fc;
-  --c-clinisys: #fbbf24;
-  --c-labvantage: #f472b6;
-  --c-cloudlims: #34d399;
+  --c-kestrel: #8ea6e8;
+  --c-orbis: #b197fc;
+  --c-meridian: #fbbf24;
+  --c-halcyon: #f472b6;
+  --c-nimbus: #34d399;
 }
 
 * { box-sizing: border-box; }

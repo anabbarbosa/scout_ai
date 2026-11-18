@@ -71,8 +71,8 @@ const capital = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 const hashFor = (name) => `#/competitors/${encodeURIComponent(name)}`;
 
 function compColor(name) {
-  const known = ["labware", "starlims", "clinisys", "labvantage", "cloudlims"];
-  const key = name.toLowerCase();
+  const known = ["kestrel", "orbis", "meridian", "halcyon", "nimbus"];
+  const key = name.split(" ")[0].toLowerCase();
   return known.includes(key) ? `var(--c-${key})` : "var(--accent)";
 }
 
@@ -581,7 +581,7 @@ async function battlecard(name) {
           ),
         ),
       )
-    : empty(c.website ? "No changes detected on their sites yet." : "Not collected.");
+    : empty(c.collected ? "No changes detected on their sites yet." : "Not collected.");
 
   const angles = h(
     "div",
@@ -602,7 +602,7 @@ async function battlecard(name) {
         "div",
         { class: "bc-head" },
         h("div", { class: "bc-avatar", style: `--c:${color}` }, name.slice(0, 2)),
-        h("div", {}, h("h1", {}, `myLIMS vs ${name}`), h("div", { class: "meta" }, h("span", { class: "tag" }, c.tier === "top3" ? "Top 3" : "Watchlist"), c.website && link(c.website, c.website.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")))),
+        h("div", {}, h("h1", {}, `myLIMS vs ${name}`), h("div", { class: "meta" }, h("span", { class: "tag" }, c.tier === "top3" ? "Top 3" : "Watchlist"))),
       ),
       profile.why && h("p", { class: "lead" }, profile.why),
     ),
