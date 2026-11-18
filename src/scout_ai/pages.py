@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
+from scout_ai.aliases import mask
 from scout_ai.api import WEB_DIR, _recommendation, create_app
 from scout_ai.review import approve
 
@@ -48,7 +49,7 @@ def build_snapshot(engine: Engine) -> dict[str, Any]:
         "recommendations": recommendations,
         "notifications": [get(f"/notifications/{n['id']}") for n in get("/notifications")],
         "approvals": {
-            str(rec["id"]): dry_run_approval(engine, rec["id"])
+            str(rec["id"]): mask(dry_run_approval(engine, rec["id"]))
             for rec in recommendations
             if rec["status"] == "proposed"
         },

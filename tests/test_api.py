@@ -148,9 +148,11 @@ def test_meta_lists_months_and_the_banner(client: TestClient) -> None:
 
 
 def test_signals_filter_by_competitor_and_type(client: TestClient) -> None:
-    [signal] = client.get("/api/signals", params={"competitor": "LabWare"}).json()
-    assert signal["title"] == "LabWare food webinar"
-    assert client.get("/api/signals", params={"competitor": "STARLIMS"}).json() == []
+    [signal] = client.get("/api/signals", params={"competitor": "Kestrel LIMS"}).json()
+    assert signal["title"] == "Kestrel LIMS food webinar"
+    assert signal["competitor"] == "Kestrel LIMS"
+    assert signal["url"] is None  # a link to the competitor's own site would name it
+    assert client.get("/api/signals", params={"competitor": "Orbis LIMS"}).json() == []
     assert client.get("/api/signals", params={"type": "pricing"}).json() == []
     assert client.get("/api/signals", params={"since": "2026-11-03"}).json() == []
 
@@ -190,6 +192,7 @@ def test_campaigns_and_competitive_deals(client: TestClient) -> None:
     deals = client.get("/api/deals/competition").json()
     assert deals["year"] == 2026
     [labware] = deals["competitors"]
+    assert labware["competitor"] == "Kestrel LIMS"
     assert (labware["won"], labware["lost"], labware["open"]) == (1, 1, 1)
     assert labware["win_rate"] == 0.5
     assert labware["amount_won"] == 10000.0
