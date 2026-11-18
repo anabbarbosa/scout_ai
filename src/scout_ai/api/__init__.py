@@ -8,21 +8,23 @@ There is no login: `scout serve` listens on localhost only, and the team drives 
 dashboard during the demo.
 """
 
+import json
 from collections import defaultdict
-from collections.abc import Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
 from scout_ai import __version__
+from scout_ai.aliases import mask, real_name
 from scout_ai.db.models import (
     Campaign,
     Competitor,
@@ -59,6 +61,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     app = FastAPI(title="Scout AI", version=__version__, docs_url="/api/docs", openapi_url=None)
     app.state.engine = engine
     app.include_router(_router())
+    app.middleware("http")(_mask_competitors)
 
     @app.get("/", include_in_schema=False)
     def index() -> FileResponse:
@@ -74,6 +77,19 @@ def _session(request: Request) -> Iterator[Session]:
 
 
 DB = Annotated[Session, Depends(_session)]
+
+
+async def _mask_competitors(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    """API answers use fictional competitor names and no competitor links (`scout_ai.aliases`)."""
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/") or not response.headers.get(
+        "content-type", ""
+    ).startswith("application/json"):
+        return response
+    body = b"".join([chunk async for chunk in response.body_iterator])  # type: ignore[attr-defined]
+    return JSONResponse(mask(json.loads(body)), status_code=response.status_code)
 
 
 def _router() -> APIRouter:
@@ -109,7 +125,8 @@ def _router() -> APIRouter:
             {
                 "id": c.id,
                 "name": c.name,
-                "website": c.website,
+                "website": c.website,  # masked: always null in answers
+                "collected": c.website is not None,
                 "tier": c.tier.value,
                 "signals_last_7_days": recent.get(c.id, 0),
             }
@@ -126,7 +143,7 @@ def _router() -> APIRouter:
     ) -> list[Row]:
         query = select(Signal, Competitor).join(Competitor)
         if competitor:
-            query = query.where(Competitor.name == competitor)
+            query = query.where(Competitor.name == real_name(competitor))
         if signal_type:
             query = query.where(Signal.type == signal_type)
         if since:

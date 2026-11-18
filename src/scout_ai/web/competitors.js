@@ -20,9 +20,11 @@ export const MYLIMS = {
   weakness: "Confience brand still new after the acquisition",
 };
 
+// Keyed by the fictional names the API answers with (scout_ai/aliases.py). Details that
+// would identify the real company (founding year, owners, product names, links) are left out.
 export const PROFILES = {
-  LabWare: {
-    origin: "USA, 1987",
+  "Kestrel LIMS": {
+    origin: "USA, decades in the market",
     model: "Enterprise, highly configurable",
     segments: "Pharma, government, regulated manufacturing",
     brazil: "Through integrators",
@@ -34,44 +36,43 @@ export const PROFILES = {
       "In Brazil, contrast our local team with delivery through integrators.",
     ],
   },
-  STARLIMS: {
-    origin: "Sold by Abbott to Francisco Partners (deal announced in 2021)",
+  "Orbis LIMS": {
+    origin: "Owned by private equity",
     model: null,
     segments: "Regulated clinical and pharma labs",
     brazil: null,
     message: null,
     weakness: null,
-    why: "It shows up in HubSpot deals, and Confience already runs a “best alternative to STARLIMS” page: an active campaign target.",
-    angles: ["Keep the “best alternative to STARLIMS” page fed with proof points from deals we win against it."],
-    links: [["Our STARLIMS alternative page", "https://get.confience.io/best-alternative-to-starlims"]],
+    why: "It shows up in HubSpot deals, and Confience already runs a comparison page against it: an active campaign target.",
+    angles: ["Keep our comparison page fed with proof points from deals we win against it."],
   },
-  Clinisys: {
-    origin: "UK/USA; consolidation of Sunquest, Horizon and Apollo (2022)",
+  "Meridian Lab Systems": {
+    origin: "UK/USA; a portfolio built from acquisitions",
     model: "Laboratory platform (LIS + LIMS)",
     segments: "Clinical/diagnostics, environmental, public health, agriculture",
     brazil: "To be confirmed",
     message: "Scale and portfolio breadth",
     weakness: "Integrating many acquired products",
-    why: "HORIZON LIMS covers environmental, water quality, public health and agriculture labs: direct overlap with myLIMS segments. Not in HubSpot deals yet.",
+    why: "Its environmental LIMS covers environmental, water quality, public health and agriculture labs: direct overlap with myLIMS segments. Not in HubSpot deals yet.",
     angles: [
       "Position one product built for food, agro and environmental labs against a portfolio assembled from acquisitions.",
-      "Watch HubSpot for the first deal against Clinisys.",
+      "Watch HubSpot for the first deal against it.",
     ],
   },
-  LabVantage: {
-    origin: "USA, about 40 years in the market",
+  "Halcyon LIMS": {
+    origin: "USA, decades in the market",
     model: "Integrated platform (LIMS + ELN + data), cloud-oriented",
     segments: "Life sciences, pharma",
     brazil: "Growing (local acquisitions, partner)",
     message: "Integrated, award-winning platform",
-    weakness: "Lower G2 rating (3.8/5, few reviews)",
-    why: "The most active competitor in our home market (acquisitions in Brazil and Colombia, a Brazilian sales partner), but its site blocks automated collection, so it stays on the watchlist.",
+    weakness: "Lower public review rating, few reviews",
+    why: "The most active competitor in our home market (local acquisitions and a Brazilian sales partner), but its site blocks automated collection, so it stays on the watchlist.",
     angles: [
       "Defend Brazil and Latam with local customer stories and a team in the market since 2002.",
       "Lean on reviews and references, where its public rating is weaker.",
     ],
   },
-  CloudLIMS: {
+  "Nimbus LIMS": {
     origin: null,
     model: "Low-cost SaaS, per-user pricing",
     segments: "Small labs (2–50 people)",
